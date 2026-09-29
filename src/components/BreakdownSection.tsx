@@ -49,7 +49,7 @@ export default function BreakdownSection({ income, property }: BreakdownSectionP
           <Row
             key={r.key}
             label={r.label}
-            value={r.minus ? `−${formatCurrency(Math.abs(v))}` : formatCurrency(v)}
+            value={r.minus && v !== 0 ? `−${formatCurrency(Math.abs(v))}` : formatCurrency(v)}
           />
         );
       })}

@@ -59,7 +59,7 @@ function stateFor(input: AppInput, mutate?: (r: AppResult) => void) {
 }
 
 const DISCLAIMER =
-  "2025년 기준 모의 추정이에요. 실제 수급 여부는 국민연금공단·주민센터 조사로 결정돼요.";
+  "2025년 선정기준액으로 계산한 모의 추정이에요. 실제 수급 여부는 국민연금공단·주민센터 조사로 결정돼요.";
 
 describe("Result Page: 판정·수령액·신청 시기", () => {
   it("AC-1[P0]: 입력 A 결과에 판정·소득인정액·선정기준액·비율·수령액·감액 없음이 표시된다", () => {

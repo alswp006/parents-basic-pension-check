@@ -184,7 +184,7 @@ export default function Result() {
       <Spacing size={16} />
       <SummaryHero
         testId="verdict-card"
-        label="판정 결과"
+        label="기초연금 수급 가능성"
         value={<Paragraph.Text typography="t2">{VERDICT_TEXT[result.verdict]}</Paragraph.Text>}
         caption={`선정기준액 대비 ${ratioText}%`}
       />
@@ -244,7 +244,7 @@ export default function Result() {
       <BreakdownSection income={result.income} property={result.property} />
       <Spacing size={24} />
       <Paragraph.Text typography="t7" color="var(--adaptiveGrey600)">
-        {`${result.policyYear}년 기준 모의 추정이에요. 실제 수급 여부는 국민연금공단·주민센터 조사로 결정돼요.`}
+        {`${result.policyYear}년 선정기준액으로 계산한 모의 추정이에요. 실제 수급 여부는 국민연금공단·주민센터 조사로 결정돼요.`}
       </Paragraph.Text>
       <Spacing size={16} />
       {adGroupId ? <AdSlot adGroupId={adGroupId} /> : null}
