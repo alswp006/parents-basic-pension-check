@@ -38,3 +38,13 @@ body {
 .page-shell--flush {
   padding-top: 0;
 }
+
+/* TDS 입력칸·칩은 좌우 20px 안쪽 여백을 자체로 갖는다 — 본문 16px 패딩을 상쇄하고 제목·안내를 같은 x에 맞춘다. */
+.form-bleed {
+  margin: 0 -16px;
+}
+
+.form-inset {
+  padding: 0 20px;
+  word-break: keep-all;
+}

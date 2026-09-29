@@ -195,10 +195,13 @@ export default function Home() {
         />
       }
     >
+      <div className="form-bleed">
       <Spacing size={8} />
-      <Paragraph.Text typography="t6" color="var(--adaptiveGrey600)">
-        소득과 재산을 넣으면 받을 수 있을지 알려드려요
-      </Paragraph.Text>
+      <div className="form-inset">
+        <Paragraph.Text typography="t6" color="var(--adaptiveGrey600)">
+          소득과 재산을 넣으면 받을 수 있을지 알려드려요
+        </Paragraph.Text>
+      </div>
       <Spacing size={24} />
 
       <TextField
@@ -222,7 +225,9 @@ export default function Home() {
       />
       <Spacing size={24} />
 
-      <Paragraph.Text typography="t5">배우자</Paragraph.Text>
+      <div className="form-inset">
+        <Paragraph.Text typography="t5">배우자</Paragraph.Text>
+      </div>
       <Spacing size={12} />
       <Chip kind="select" variant="fill">
         <ChipItem selected={form.hasSpouse === false} onClick={() => setSpouse(false)}>
@@ -246,7 +251,9 @@ export default function Home() {
       )}
       <Spacing size={24} />
 
-      <Paragraph.Text typography="t5">거주 지역</Paragraph.Text>
+      <div className="form-inset">
+        <Paragraph.Text typography="t5">거주 지역</Paragraph.Text>
+      </div>
       <Spacing size={12} />
       <Chip kind="select" variant="fill">
         {REGIONS.map((r) => (
@@ -257,18 +264,23 @@ export default function Home() {
       </Chip>
       <Spacing size={24} />
 
-      <Paragraph.Text typography="t5">월 소득 (만 원)</Paragraph.Text>
+      <div className="form-inset">
+        <Paragraph.Text typography="t5">월 소득 (만 원)</Paragraph.Text>
+      </div>
       <Spacing size={12} />
       {INCOME_FIELDS.map(renderAmountField)}
       <Spacing size={12} />
 
-      <Paragraph.Text typography="t5">재산 (만 원)</Paragraph.Text>
+      <div className="form-inset">
+        <Paragraph.Text typography="t5">재산 (만 원)</Paragraph.Text>
+      </div>
       <Spacing size={12} />
       {PROPERTY_FIELDS.map(renderAmountField)}
       <Spacing size={12} />
 
       {adGroupId ? <AdSlot adGroupId={adGroupId} /> : null}
       <Spacing size={120} />
+      </div>
 
       <AlertDialog
         open={calcError}
