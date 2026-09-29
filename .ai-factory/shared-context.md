@@ -178,7 +178,10 @@ export interface RouteState {
   hooks/
   lib/
     analytics.ts
+    calculator.test.ts
+    calculator.ts
     contract.ts
+    pension.ts
     policy.ts
     review.ts
     share.ts
@@ -198,7 +201,9 @@ export interface RouteState {
 
 ### Exports (src/lib/)
 - analytics.ts: export type LogFields = Record<string, string | number | boolean | null>; export const DWELL_MS = 3000; export function fireAndForget(call: () => unknown): void; export function logScreen(page: string, extra?: LogFields): void; export function logClick(name: string, extra?: LogFields): void; export function logImpression(name: string, extra?: LogFields): void; export function useScreenLog(page: string): void
+- calculator.ts: export function calcIncome(input: AppInput): IncomeBreakdown; export function calcProperty(input: AppInput): PropertyBreakdown; export function getThreshold(hasSpouse: boolean): number; export function judge( recognizedIncome: number, threshold: number, ):
 - contract.ts: export type Region = '서울'|'경기'|'인천'|'강원'|'충청'|'전라'|'경상'|'제주'; export type Verdict = '받을 가능성이 높아요'|'받을 수 있어요'|'어려울 수 있어요'; export type Reduction =; export type AppInput =; export type IncomeBreakdown =; export type PropertyBreakdown =; export type PensionResult =; export type ScheduleResult =
+- pension.ts: export function calcPension( input: AppInput, recognizedIncome: number, threshold: number, ): PensionResult
 - policy.ts: export const POLICY_YEAR = 2025 as const; export const THRESHOLD_SINGLE = 2280000 as const; export const THRESHOLD_COUPLE = 3648000 as const; export const BASE_PENSION = 342510 as const; export const EARNED_INCOME_DEDUCTION = 1120000 as const; export const EARNED_INCOME_RATE = 0.7 as const; export const FINANCIAL_DEDUCTION = 20000000 as const; export const BASIC_PROPERTY =
 - review.ts: export function requestReviewOnce(key: string = REVIEW_REQUESTED_KEY): void
 - share.ts: export interface ShareAppOptions; export async function shareApp(opts: ShareAppOptions): Promise<void>
@@ -221,10 +226,15 @@ export interface RouteState {
 - SummaryHero.tsx: SummaryHero
 - TossPurchase.tsx: TossPurchase
 - TossRewardAd.tsx: TossRewardAd
+
+### Module Dependencies (import graph)
+  lib/calculator.ts → imports: lib/policy, lib/types, lib/pension
+  lib/pension.ts → imports: lib/policy, lib/types
 CRITICAL: Before creating any new function, type, or component, check the list above. If something similar exists, import and use it.
 
 ## Already Implemented (do NOT duplicate or overwrite)
 - 0001: Types & Policy Constants (files: src/lib/types.ts, src/lib/policy.ts)
+- 0002: Core Logic: 소득인정액·판정·수령액 (files: src/lib/calculator.ts, src/lib/pension.ts, src/lib/calculator.test.ts)
 
 ## Available exports from existing files
 // src/App.tsx
@@ -285,11 +295,17 @@ export function logClick(name: string, extra?: LogFields): void {
 export function logImpression(name: string, extra?: LogFields): void {
 export function useScreenLog(page: string): void {
 
+// src/lib/calculator.ts
+export { calcPension } from '@/lib/pension';
+export function calcIncome(input: AppInput): IncomeBreakdown {
+export function calcProperty(input: AppInput): PropertyBreakdown {
+export function getThreshold(hasSpouse: boolean): number {
+export function judge(
+
 // src/lib/contract.ts
 export type Region = '서울'|'경기'|'인천'|'강원'|'충청'|'전라'|'경상'|'제주';
 export type Verdict = '받을 가능성이 높아요'|'받을 수 있어요'|'어려울 수 있어요';
-export type Reduction = { spouse: number; reversal: number };
-export type AppInput = { birthDate: string; hasSpouse: boolean; region: Region; monthlyEarnedIncome: number; monthlyOtherIncome: number; businessIncome: number; rentalIncome: number; generalAsset: number; financialAsset: number
+export
 
 ## Memory Index (자동 학습 — 힌트로만 사용, 실제 코드 확인 필수)
 
