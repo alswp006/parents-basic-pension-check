@@ -184,10 +184,13 @@ export interface RouteState {
     pension.ts
     policy.ts
     review.ts
+    schedule.ts
     share.ts
     storage.ts
     types.ts
     utils.ts
+    validation.test.ts
+    validation.ts
   main.tsx
   pages/
     Home.tsx
@@ -206,10 +209,12 @@ export interface RouteState {
 - pension.ts: export function calcPension( input: AppInput, recognizedIncome: number, threshold: number, ): PensionResult
 - policy.ts: export const POLICY_YEAR = 2025 as const; export const THRESHOLD_SINGLE = 2280000 as const; export const THRESHOLD_COUPLE = 3648000 as const; export const BASE_PENSION = 342510 as const; export const EARNED_INCOME_DEDUCTION = 1120000 as const; export const EARNED_INCOME_RATE = 0.7 as const; export const FINANCIAL_DEDUCTION = 20000000 as const; export const BASIC_PROPERTY =
 - review.ts: export function requestReviewOnce(key: string = REVIEW_REQUESTED_KEY): void
+- schedule.ts: export function calcSchedule(birthDate: string, today: Date): ScheduleResult
 - share.ts: export interface ShareAppOptions; export async function shareApp(opts: ShareAppOptions): Promise<void>
 - storage.ts: export function getItem<T>(key: string): T | null; export function setItem<T>(key: string, value: T): void; export function removeItem(key: string): void
 - types.ts: export type Region = 'metro' | 'city' | 'rural'; export type Verdict = 'likely' | 'borderline' | 'unlikely'; export type Reduction = 'couple' | 'incomeReversal'; export interface AppInput; export interface IncomeBreakdown; export interface PropertyBreakdown; export interface PensionResult; export interface ScheduleResult
 - utils.ts: export function cn(...classes: (string | boolean | undefined | null)[]): string; export function formatNumber(n: number): string; export function formatCurrency(n: number, currency = 'KRW'): string
+- validation.ts: export const AMOUNT_LIMIT_MANWON =; export function isValidBirthDate(yyyymmdd: string, today: Date): boolean; export function validateAmountText(text: string, kind: AmountKind): string | undefined; export function validateForm( form: FormState, today: Date, ):; export function toAppInput(form: FormState): AppInput; export function runDiagnosis(input: AppInput, today: Date): AppResult
 
 ### Components (src/components/)
 - AdSlot.tsx: AdSlot
@@ -230,11 +235,14 @@ export interface RouteState {
 ### Module Dependencies (import graph)
   lib/calculator.ts → imports: lib/policy, lib/types, lib/pension
   lib/pension.ts → imports: lib/policy, lib/types
+  lib/schedule.ts → imports: lib/types
+  lib/validation.ts → imports: lib/schedule, lib/calculator, lib/pension, lib/policy, lib/utils, lib/types
 CRITICAL: Before creating any new function, type, or component, check the list above. If something similar exists, import and use it.
 
 ## Already Implemented (do NOT duplicate or overwrite)
 - 0001: Types & Policy Constants (files: src/lib/types.ts, src/lib/policy.ts)
 - 0002: Core Logic: 소득인정액·판정·수령액 (files: src/lib/calculator.ts, src/lib/pension.ts, src/lib/calculator.test.ts)
+- 0003: Schedule, Validation & runDiagnosis (files: src/lib/schedule.ts, src/lib/validation.ts, src/lib/validation.test.ts)
 
 ## Available exports from existing files
 // src/App.tsx

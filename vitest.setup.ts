@@ -14,6 +14,7 @@ import "@testing-library/jest-dom/vitest";
 // ── localStorage / sessionStorage isolation ──
 // jsdom's storage persists between tests by default. Clear it to prevent pollution.
 beforeEach(() => {
+  vi.resetModules(); // Clear module cache so await import() loads fresh copies
   localStorage.clear();
   sessionStorage.clear();
 });

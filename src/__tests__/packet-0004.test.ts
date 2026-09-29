@@ -79,8 +79,8 @@ describe('Input Sanitize & Safe Storage', () => {
     });
 
     it('AC-3: returns false when localStorage.setItem throws QuotaExceededError', async () => {
-      const originalSetItem = localStorage.setItem;
-      localStorage.setItem = vi.fn(() => {
+      vi.resetModules(); // Ensure fresh module import
+      const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
         const error = new Error('QuotaExceededError');
         error.name = 'QuotaExceededError';
         throw error;
@@ -105,7 +105,7 @@ describe('Input Sanitize & Safe Storage', () => {
         expect(result).toBe(false);
         expect(consoleErrorSpy).not.toHaveBeenCalled();
       } finally {
-        localStorage.setItem = originalSetItem;
+        setItemSpy.mockRestore();
       }
     });
   });
