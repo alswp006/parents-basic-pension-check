@@ -1,0 +1,35 @@
+{
+  "koreanName": "부모님 기초연금",
+  "englishName": "Parents Basic Pension Check",
+  "appName": "parents-basic-pension-check",
+  "ageRating": "만 19세 이상",
+  "appType": "비게임",
+  "supportEmail": "support@aifactory.dev",
+  "category": {
+    "primary": "재테크"
+  },
+  "subtitle": "부모님 기초연금 자격 1분 확인",
+  "description": "부모님 연령·배우자 유무·소득·재산을 입력하면 소득인정액을 계산하고 기초연금 선정기준과 비교해 가능성을 판정합니다. 부부 감액을 반영한 예상 월 수령액과 만 65세 생일 기준 신청 가능 시기를 한 화면에서 볼 수 있습니다.",
+  "searchKeywords": [
+    "기초연금",
+    "기초연금 모의계산",
+    "기초연금 자격 판정",
+    "부모님 연금",
+    "노후 자금 계산",
+    "기초연금 신청",
+    "소득인정액",
+    "65세 연금"
+  ],
+  "keyFeatures": [
+    "소득인정액 계산과 수령 가능성 판정",
+    "부부 감액 반영한 예상 월 수령액",
+    "신청 가능 시기 및 남은 일수 계산",
+    "재산별 소득 환산 내역 확인"
+  ],
+  "_notes": {
+    "appTypeSuspected": false,
+    "appTypeReasons": [],
+    "reviewLevel": null,
+    "reviewReasons": []
+  }
+}
