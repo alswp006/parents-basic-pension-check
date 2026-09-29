@@ -34,6 +34,7 @@ export function EmptyState({
         justifyContent: "center",
         minHeight: "60dvh",
         wordBreak: "keep-all",
+        textWrap: "balance",
         padding: "48px 24px",
       }}
     >

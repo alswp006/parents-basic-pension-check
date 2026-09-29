@@ -148,7 +148,7 @@ export default function Result() {
           title="아직 진단 결과가 없어요"
           description="생년월일과 소득·재산을 넣으면 바로 확인할 수 있어요"
           action={
-            <Button variant="weak" aria-label="진단하러 가기" onClick={goHome}>
+            <Button variant="weak" display="block" aria-label="진단하러 가기" onClick={goHome}>
               진단하러 가기
             </Button>
           }

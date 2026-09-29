@@ -279,7 +279,7 @@ export default function Home() {
       <Spacing size={12} />
 
       {adGroupId ? <AdSlot adGroupId={adGroupId} /> : null}
-      <Spacing size={120} />
+      <Spacing size={168} />
       </div>
 
       <AlertDialog
