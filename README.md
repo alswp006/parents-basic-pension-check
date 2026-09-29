@@ -1,121 +1,41 @@
-🇺🇸 [한국어](./README.ko.md)
+# Parents Basic Pension Check
 
-# Parents Basic Pension Check — Diagnose basic pension eligibility in seconds
-
-An App-in-Toss mini app that helps adult children determine whether their parents qualify for Korea's Basic Old Age Pension. Enter your parents' age, residence, and income/asset details, and get an instant eligibility verdict (likely / borderline / unlikely), estimated monthly pension amount, and application date.
-
-## Features
-
-- 💰 **Eligibility Diagnosis** — Calculates income-recognized amount by combining earned income, other income, and property income conversion, then compares against selection threshold to predict qualification likelihood
-- 📊 **Pension Amount Forecast** — Estimates monthly pension including spousal reduction (20%) and income reversal prevention adjustments
-- 📅 **Application Timing** — Calculates when your parents become eligible at age 65 with D-day countdown
-- 📈 **Asset Breakdown** — Shows property conversion details by category (general property, financial assets, debt, basic property deduction, luxury auto/club membership)
-- 💾 **Auto-Save** — Stores last input locally for quick re-check without re-entering everything
+앱 이름: 부모님 기초연금 / Parents Basic Pension Check > ⚠️ **확인이 필요한 수치**: 이 설계는 선정기준액, 기준연금액, 공제액, 기본재산액, 환산율 같은 정책 수치를 쓰지만 IDEA_BRIEF에는 이 값들이 없습니다. 그래서 설계 에이전트가 알고 있던 **2025년 보건복지부 고시값**을 임시로 넣었습니다. 이 값들은 `src/lib/policy.ts` 한 파일에만 모아 두었습니다. **출시 전에 올해(2026) 고시값으로 바꾸고 확인해야 합니다.** 아래 AC 예시는 모두 이 임시값으로 계산했습니다. 값을 바꾸면 예시 숫자도 다시 계산하세요. > 🆕 **시뮬레이션 반영 요약**: 새로 추가한 AC는 5개입니다. 추가한 곳에는 🆕 표시를 붙였습니다.
 
 ## Tech Stack
 
-- **Framework**: Vite + React 18
-- **Routing**: React Router DOM 7
-- **UI Components**: Toss Design System (TDS Mobile)
-- **State**: React Context + localStorage (SDK `Storage` for native persistence)
-- **Testing**: Vitest (unit) + Playwright (visual)
-- **Styling**: Emotion
+- React 18.0.0
+- TypeScript
+- Vitest
+
+## Routes
+
+| Path | Description |
+|------|-------------|
+| `/Home` | Home |
+| `/Result` | Result |
 
 ## Getting Started
 
-### Install dependencies
 ```bash
-npm install
+pnpm install
+pnpm dev
 ```
 
-### Build for production
+## Development
+
 ```bash
-npx vite build
+pnpm typecheck    # Type checking
+pnpm test         # Run tests
+pnpm build        # Production build
 ```
 
-Outputs a static bundle to `dist/` ready for CDN hosting. No server-side rendering or dynamic routes.
+## Design Documents
 
-### Deploy to Apps-in-Toss
-```bash
-npx ait build
-npx ait deploy --api-key YOUR_API_KEY
-```
+See `.ai-factory/` directory for full design artifacts:
+- `prd.md` — Product Requirements Document
+- `spec.md` — Technical Specification
+- `task.md` — Epic/Task Breakdown
 
-Deploys the static bundle to Toss CDN. For first-time setup, register your app in the Toss Developer Console.
-
-### Run tests
-```bash
-npx tsc --noEmit        # Type check
-npx vitest run          # Unit tests
-npm run test:visual     # Visual regression (Playwright)
-```
-
-## Environment Variables
-
-| Variable | Description | Required |
-|---|---|---|
-| `VITE_SHARE_OG_URL` | Open Graph image URL for share preview (KakaoTalk, SMS) | No |
-| `VITE_TOSS_AD_SLOT_ID` | Banner ad slot ID from Toss Developer Console | No |
-| `VITE_TOSS_IAP_SKU` | In-app purchase SKU (unused in this app) | No |
-| `VITE_TOSS_PROMOTION_CODE` | Promotion reward code for user incentives | No |
-
-See `.env.example` for the template. Vite injects these at build time. Leave blank to degrade gracefully (feature unavailable, no white screen).
-
-## Project Structure
-
-```
-src/
-├── pages/                 # Screen components
-│   ├── Home.tsx          # Input form: demographics, income, assets
-│   └── Result.tsx        # Results: eligibility, pension forecast, timeline
-├── components/           # Reusable UI (TDS wrappers + pre-built)
-│   ├── ScreenScaffold.tsx
-│   ├── SummaryHero.tsx
-│   ├── Card.tsx
-│   ├── BreakdownSection.tsx
-│   └── ... (10+ support components)
-├── lib/                  # Core logic
-│   ├── calculator.ts     # Pension eligibility & amount calculation
-│   ├── pension.ts        # Eligibility verdict logic
-│   ├── policy.ts         # 2025 thresholds (update before 2026 launch)
-│   ├── validation.ts     # Input field validation
-│   ├── sanitize.ts       # Input cleanup (strip commas, parse numbers)
-│   ├── storedInput.ts    # localStorage + state sync
-│   ├── types.ts          # Shared TypeScript types
-│   └── ... (analytics, share, review, schedule)
-├── __tests__/            # Vitest unit tests
-├── App.tsx               # Route definitions
-└── main.tsx              # React root (do not edit)
-```
-
-## Policy Thresholds (2025 — Update Before 2026 Launch)
-
-These constants in `src/lib/policy.ts` must be updated annually:
-
-- Selection threshold: ₩2,280,000 (single) / ₩3,648,000 (couple)
-- Base pension: ₩342,510/month
-- Earned income deduction: ₩1,120,000
-- Basic property deduction: ₩135M (metro) / ₩85M (mid-size) / ₩72.5M (rural)
-- Property conversion rate: 4% annually
-
-Before production launch in 2026, verify current-year values from the Ministry of Health and Welfare announcement.
-
-## Deployment
-
-The app is deployed to Toss via the Apps-in-Toss platform (not traditional CDN). The build process:
-
-1. **Build static bundle**: `npx vite build` → `dist/` (CSR only, no SSR)
-2. **Authenticate**: `npx ait build` compiles for Toss WebView
-3. **Submit to Toss CDN**: `npx ait deploy` pushes to https://{appName}.web.tossmini.com
-
-Toss review checklist:
-- ✅ Zero console errors
-- ✅ Zero CORS errors (API calls to external servers need CORS headers)
-- ✅ No external domain navigation (no window.location.href to 3rd-party sites)
-- ✅ Users 19+ only
-- ✅ Back/close buttons work (use React Router, not custom history)
-- ✅ No test ad/promo keys in code (use environment variables)
-
-## License
-
-MIT
+---
+Built with [AI Factory](https://github.com/alswp006/ai-factory) · Last synced: 2026-09-29
