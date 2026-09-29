@@ -24,9 +24,9 @@ export function ScreenScaffold({
   bottom?: ReactNode;
 }) {
   return (
-    <PageShell style={top ? { paddingTop: 0 } : undefined}>
+    <PageShell flush={!!top}>
       {top}
-      <div style={{ padding: "16px 16px 0" }}>{children}</div>
+      <div className="screen-scaffold-body">{children}</div>
       {bottom}
     </PageShell>
   );

@@ -74,7 +74,7 @@ function hasHint(hint: ReactNode): boolean {
  */
 function SubmitFooterHint({ children }: { children: ReactNode }) {
   return (
-    <div data-testid="submit-footer-hint" style={{ textAlign: "center", paddingBottom: 8 }}>
+    <div data-testid="submit-footer-hint" className="submit-footer-hint">
       <Paragraph.Text typography="t7" color="var(--adaptiveGrey600)">
         {children}
       </Paragraph.Text>

@@ -1,73 +1,274 @@
-import { Top, Paragraph, Spacing, ListRow, Button } from '@toss/tds-mobile';
+import { useRef, useState } from 'react';
+import type { FocusEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ScreenScaffold } from '../components/ScreenScaffold';
-import { SummaryHero } from '../components/SummaryHero';
-import { Card } from '../components/Card';
+import { AlertDialog, Chip, ChipItem, ListRow, Paragraph, Spacing, Switch, TextField, Top } from '@toss/tds-mobile';
+import { generateHapticFeedback } from '@apps-in-toss/web-framework';
+import { ScreenScaffold } from '@/components/ScreenScaffold';
+import { SubmitFooter } from '@/components/BottomCTA';
+import { AdSlot } from '@/components/AdSlot';
+import { logClick } from '@/lib/analytics';
+import { sanitizeAmount, sanitizeBirthDate } from '@/lib/sanitize';
+import { loadLastInput, saveLastInput, toFormState } from '@/lib/storedInput';
+import { runDiagnosis, toAppInput, validateForm } from '@/lib/validation';
+import type { FormState, Region, RouteState } from '@/lib/types';
 
-/**
- * Golden Home page — 대시보드/탭-루트 골든 레퍼런스.
- *
- * 다른 페이지를 쓸 때 이 패턴을 모방하라:
- * - ScreenScaffold로 감싼다(raw fragment 골격 금지) — safe-area + 100dvh 자동 처리.
- * - 화면 최상단에 SummaryHero로 시각 앵커를 만든다('휑함'의 가장 큰 원인은 앵커 부재).
- *   데이터가 있으면 value에 <Amount value={n} unit="원" typography="t1" />로 핵심 숫자를 크게 박아라.
- * - 1차 진입 액션은 SummaryHero 카드 내부 버튼(display="block", 전체폭)에 둔다.
- *   → 화면 중앙 부유/좌측 글자폭 버튼 금지. 하단 TabBar가 있으면 SubmitFooter와 겹치므로 카드 안에.
- * - 핵심 정보는 raw <div>가 아니라 Card로 묶어 위계를 만든다.
- * - 하단 탭이 필요하면(2~5탭): bottom={<FloatingTabBar items={[{label,path}...]} />}.
- *   ('TDS TabBar'는 존재하지 않는다 — 직접 만들지 말고 FloatingTabBar를 써라.)
- * - 카피는 CLAUDE.md "카피 규칙 — AI 냄새 금지"를 따른다: 기능 나열식 홍보 문구·상투구·
- *   generic 버튼("시작하기") 금지. 이 파일의 예시 문구도 앱 맥락에 맞게 교체 대상이다.
- *
- * Scaffold tokens (replaced by scaffold-toss.ts at project creation):
- *   Parents Basic Pension Check -> the app's display name
- *   우리 부모님 기초연금 받을 수 있을까? 소득·재산 넣고 1분 진단    -> the one-line description
- */
+type AmountKey = 'earned' | 'other' | 'general' | 'financial' | 'debt' | 'luxury';
+type FieldKey = 'birthDate' | AmountKey;
 
-// ⚠ 이 목록은 골격 예시다 — 앱의 실제 콘텐츠(핵심 지표·최근 기록·바로가기)로 반드시 교체하라.
-// '간편한 사용/빠른 처리' 같은 기능 나열식 홍보 문구는 카피 규칙(CLAUDE.md "AI 냄새 금지") 위반이다.
-// 사용자가 이 화면에서 실제로 확인할 정보를 넣어라 — 아래처럼 데이터가 사는 행으로.
-const HIGHLIGHTS = [
-  { title: '오늘', description: '아직 기록이 없어요' },
-  { title: '이번 주', description: '기록 3건 · 평균 12분' },
+const HINT_MISSING = '생년월일·배우자 유무·거주 지역을 입력해 주세요';
+const HINT_INVALID = '입력한 값을 확인해 주세요';
+
+const REGIONS: { value: Region; label: string }[] = [
+  { value: 'metro', label: '대도시' },
+  { value: 'city', label: '중소도시' },
+  { value: 'rural', label: '농어촌' },
 ];
+
+const INCOME_FIELDS: { key: AmountKey; label: string; placeholder: string }[] = [
+  { key: 'earned', label: '근로소득(부부 합산)', placeholder: '예: 150' },
+  { key: 'other', label: '기타소득(연금·사업·임대 등)', placeholder: '예: 50' },
+];
+
+const PROPERTY_FIELDS: { key: AmountKey; label: string; placeholder: string }[] = [
+  { key: 'general', label: '주택·토지 등 일반재산(공시가격)', placeholder: '예: 20000' },
+  { key: 'financial', label: '예금·주식 등 금융재산', placeholder: '예: 3000' },
+  { key: 'debt', label: '부채', placeholder: '예: 1000' },
+  { key: 'luxury', label: '고급자동차·회원권', placeholder: '예: 0' },
+];
+
+const LAST_FIELD: FieldKey = 'luxury';
+
+const EMPTY_FORM: FormState = {
+  birthDate: '',
+  hasSpouse: null,
+  spouseEligible: false,
+  region: null,
+  earned: '',
+  other: '',
+  general: '',
+  financial: '',
+  debt: '',
+  luxury: '',
+};
+
+/** SDK는 WebView 밖에서 throw하므로 가드한다. */
+function tickWeak() {
+  try {
+    Promise.resolve(generateHapticFeedback({ type: 'tickWeak' })).catch(() => {});
+  } catch {
+    /* WebView 밖에서는 무시 */
+  }
+}
+
+function scrollCenter(e: FocusEvent<HTMLInputElement>) {
+  try {
+    e.currentTarget.scrollIntoView?.({ block: 'center' });
+  } catch {
+    /* 구형 WebView에서는 무시 */
+  }
+}
 
 export default function Home() {
   const navigate = useNavigate();
+  // today는 한 번만 만들어 검증과 계산에 같이 넘긴다.
+  const [today] = useState(() => new Date());
+  const [form, setForm] = useState<FormState>(() => {
+    const saved = loadLastInput(today);
+    return saved ? toFormState(saved) : EMPTY_FORM;
+  });
+  const [touched, setTouched] = useState<Partial<Record<FieldKey, boolean>>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [calcError, setCalcError] = useState(false);
+  const submittingRef = useRef(false);
+
+  const { errors, missingRequired, valid } = validateForm(form, today);
+  const hasErrors = Object.keys(errors).length > 0;
+  const adGroupId = import.meta.env.VITE_TOSS_AD_GROUP_ID as string | undefined;
+
+  const touch = (key: FieldKey) => setTouched((t) => (t[key] ? t : { ...t, [key]: true }));
+
+  const setSpouse = (hasSpouse: boolean) => {
+    tickWeak();
+    // 배우자 없음이면 spouseEligible도 함께 초기화한다.
+    setForm((f) => ({ ...f, hasSpouse, spouseEligible: false }));
+  };
+
+  const setRegion = (region: Region) => {
+    tickWeak();
+    setForm((f) => ({ ...f, region }));
+  };
+
+  const toggleSpouseEligible = () => {
+    tickWeak();
+    setForm((f) => ({ ...f, spouseEligible: !f.spouseEligible }));
+  };
+
+  const releaseSubmit = () => {
+    submittingRef.current = false;
+    setSubmitting(false);
+  };
+
+  const handleSubmit = () => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setSubmitting(true);
+
+    let state: RouteState;
+    try {
+      if (!validateForm(form, today).valid) {
+        releaseSubmit();
+        return;
+      }
+      const input = toAppInput(form);
+      const result = runDiagnosis(input, today);
+      try {
+        saveLastInput(input);
+      } catch {
+        /* 저장 실패는 무시하고 이동한다 */
+      }
+      state = { input, result };
+    } catch {
+      releaseSubmit();
+      setCalcError(true);
+      return;
+    }
+    navigate('/result', { state });
+  };
+
+  const closeError = () => setCalcError(false);
+
+  const retry = () => {
+    tickWeak();
+    closeError();
+    handleSubmit();
+  };
+
+  const renderAmountField = (field: { key: AmountKey; label: string; placeholder: string }) => {
+    const showError = !!touched[field.key] && !!errors[field.key];
+    return (
+      <div key={field.key}>
+        <TextField
+          variant="box"
+          label={field.label}
+          labelOption="sustain"
+          aria-label={field.label}
+          placeholder={field.placeholder}
+          inputMode="numeric"
+          enterKeyHint={field.key === LAST_FIELD ? 'done' : 'next'}
+          value={form[field.key]}
+          onChange={(e) => {
+            const value = sanitizeAmount(e.target.value);
+            setForm((f) => ({ ...f, [field.key]: value }));
+          }}
+          onFocus={scrollCenter}
+          onBlur={() => touch(field.key)}
+          hasError={showError}
+          help={showError ? errors[field.key] : undefined}
+        />
+        <Spacing size={12} />
+      </div>
+    );
+  };
+
+  const birthError = !!touched.birthDate && !!errors.birthDate;
 
   return (
     <ScreenScaffold
       top={<Top title={<Top.TitleParagraph>부모님 기초연금</Top.TitleParagraph>} />}
+      bottom={
+        <SubmitFooter
+          label="진단하기"
+          onClick={() => {
+            logClick('diagnose_submit');
+            handleSubmit();
+          }}
+          disabled={!valid || submitting}
+          loading={submitting}
+          hint={missingRequired ? HINT_MISSING : hasErrors ? HINT_INVALID : undefined}
+        />
+      }
     >
-      {/* 시각 앵커: 헤드라인 + 카드 내 진입 버튼(부유 금지, display="block" 전체폭).
-          데이터 앱이면 value를 <Amount typography="t1" />(핵심 숫자)로 교체하라. */}
-      <SummaryHero
-        label="부모님 기초연금"
-        value={<Paragraph.Text typography="t2">우리 부모님 기초연금 받을 수 있을까? 소득·재산 넣고 1분 진단</Paragraph.Text>}
-        caption="로그인 없이 바로 쓸 수 있어요"
-        action={
-          // 라벨은 앱의 핵심 행동 동사로 교체하라 — "연봉 계산하기"/"기록 남기기" 등.
-          // generic "시작하기"/"확인"은 카피 규칙 위반. onClick도 실제 첫 화면 경로로.
-          <Button variant="fill" display="block" onClick={() => navigate('/')}>
-            첫 결과 보기
-          </Button>
-        }
-        testId="home-hero"
+      <Spacing size={8} />
+      <Paragraph.Text typography="t6" color="var(--adaptiveGrey600)">
+        소득과 재산을 넣으면 받을 수 있을지 알려드려요
+      </Paragraph.Text>
+      <Spacing size={24} />
+
+      <TextField
+        variant="box"
+        label="부모님 생년월일"
+        labelOption="sustain"
+        aria-label="부모님 생년월일"
+        placeholder="예: 19611110"
+        inputMode="numeric"
+        enterKeyHint="next"
+        maxLength={10}
+        value={form.birthDate}
+        onChange={(e) => {
+          const value = sanitizeBirthDate(e.target.value);
+          setForm((f) => ({ ...f, birthDate: value }));
+        }}
+        onFocus={scrollCenter}
+        onBlur={() => touch('birthDate')}
+        hasError={birthError}
+        help={birthError ? errors.birthDate : undefined}
       />
-
       <Spacing size={24} />
 
-      {/* 핵심 정보는 Card로 묶기(raw div 금지) — 위계 생성 */}
-      <Card testId="home-highlights">
-        {HIGHLIGHTS.map((h, idx) => (
-          <ListRow
-            key={idx}
-            contents={<ListRow.Texts type="2RowTypeA" top={h.title} bottom={h.description} />}
-          />
+      <Paragraph.Text typography="t5">배우자</Paragraph.Text>
+      <Spacing size={12} />
+      <Chip kind="select">
+        <ChipItem selected={form.hasSpouse === false} onClick={() => setSpouse(false)}>
+          없음
+        </ChipItem>
+        <ChipItem selected={form.hasSpouse === true} onClick={() => setSpouse(true)}>
+          있음
+        </ChipItem>
+      </Chip>
+      {form.hasSpouse === true && (
+        <ListRow
+          contents={<ListRow.Texts type="1RowTypeA" top="배우자도 만 65세 이상이에요" />}
+          right={
+            <Switch
+              checked={form.spouseEligible}
+              onChange={toggleSpouseEligible}
+              aria-label="배우자도 만 65세 이상이에요"
+            />
+          }
+        />
+      )}
+      <Spacing size={24} />
+
+      <Paragraph.Text typography="t5">거주 지역</Paragraph.Text>
+      <Spacing size={12} />
+      <Chip kind="select">
+        {REGIONS.map((r) => (
+          <ChipItem key={r.value} selected={form.region === r.value} onClick={() => setRegion(r.value)}>
+            {r.label}
+          </ChipItem>
         ))}
-      </Card>
-
+      </Chip>
       <Spacing size={24} />
+
+      <Paragraph.Text typography="t5">월 소득 (만 원)</Paragraph.Text>
+      <Spacing size={12} />
+      {INCOME_FIELDS.map(renderAmountField)}
+      <Spacing size={12} />
+
+      <Paragraph.Text typography="t5">재산 (만 원)</Paragraph.Text>
+      <Spacing size={12} />
+      {PROPERTY_FIELDS.map(renderAmountField)}
+      <Spacing size={12} />
+
+      {adGroupId ? <AdSlot adGroupId={adGroupId} /> : null}
+      <Spacing size={120} />
+
+      <AlertDialog
+        open={calcError}
+        title="계산 중 문제가 생겼어요"
+        onClose={closeError}
+        alertButton={<AlertDialog.AlertButton onClick={retry}>다시 시도</AlertDialog.AlertButton>}
+      />
     </ScreenScaffold>
   );
 }

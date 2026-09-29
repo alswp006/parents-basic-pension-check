@@ -633,8 +633,12 @@ export function mockTossRewardAd() {
 
 // ── react-router-dom ──
 // Preserve actual router + override useNavigate for assertion.
+// vi.mock이 아니라 vi.doMock이다 — 함수 안의 vi.mock은 이 파일 맨 위로 호이스팅돼, mocks.ts를 import하는 것만으로
+// 테스트 파일이 직접 건 react-router-dom 목을 덮어쓴다(화면은 이 파일의 mockNavigate를 받고 테스트는 자기
+// mockNavigate를 단언해 "0회 호출"로 실패했다). doMock은 mockRouter()를 부른 뒤 import되는 모듈에만 적용된다 —
+// 화면을 정적 import하는 테스트는 자기 파일에서 vi.mock("react-router-dom", …)을 직접 걸어라.
 export function mockRouter() {
-  vi.mock("react-router-dom", async () => {
+  vi.doMock("react-router-dom", async () => {
     const actual = await vi.importActual<typeof import("react-router-dom")>(
       "react-router-dom",
     );

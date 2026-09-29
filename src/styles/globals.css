@@ -17,3 +17,24 @@ body {
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
 }
+
+/* 인라인 padding 대신 클래스로 둔다 — 템플릿 컴포넌트가 화면 HTML에 style="padding…"을 남기지 않게 한다. */
+.screen-scaffold-body {
+  padding: 16px 16px 0;
+}
+
+.submit-footer-hint {
+  text-align: center;
+  padding-bottom: 8px;
+}
+
+.page-shell {
+  min-height: 100dvh;
+  padding-top: calc(var(--toss-safe-area-top) + 16px);
+  padding-bottom: calc(var(--toss-safe-area-bottom) + 16px);
+  background-color: var(--adaptiveBackground);
+}
+
+.page-shell--flush {
+  padding-top: 0;
+}

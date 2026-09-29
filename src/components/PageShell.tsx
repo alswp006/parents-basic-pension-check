@@ -91,23 +91,19 @@ export function PageShell({
   children,
   style,
   page,
+  flush,
 }: {
   children: ReactNode;
   style?: CSSProperties;
   page?: string;
+  /** 상단 <Top/>이 자체 safe-area를 처리하는 화면 — 상단 패딩을 없앤다. */
+  flush?: boolean;
 }) {
   const inRouter = useInRouter();
 
+  // 패딩·배경은 인라인 style이 아니라 클래스(globals.css)에 둔다 — 화면 HTML에 style="padding…"이 남지 않는다.
   return (
-    <div
-      style={{
-        minHeight: "100dvh",
-        paddingTop: "calc(var(--toss-safe-area-top) + 16px)",
-        paddingBottom: "calc(var(--toss-safe-area-bottom) + 16px)",
-        backgroundColor: "var(--adaptiveBackground)",
-        ...style,
-      }}
-    >
+    <div className={flush ? "page-shell page-shell--flush" : "page-shell"} style={style}>
       {page !== undefined ? (
         <StaticScreenLog page={page} />
       ) : inRouter ? (
