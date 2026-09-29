@@ -96,7 +96,9 @@ describe("Routing & Integration", () => {
     expect(screen.queryByRole("button", { name: "진단하기" })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "다시 계산하기" }));
-    expect(submitBtn().disabled).toBe(true);
+    // SPEC: Home은 loadLastInput()으로 폼을 미리 채운다 → 방금 입력이 남아 있고 바로 다시 제출할 수 있다
+    expect((screen.getByPlaceholderText("예: 19611110") as HTMLInputElement).value).not.toBe("");
+    expect(submitBtn().disabled).toBe(false);
     expect(screen.queryByText(RESULT_VERDICT)).toBeNull();
     expect(errorSpy).toHaveBeenCalledTimes(0);
   });

@@ -164,6 +164,7 @@ export interface RouteState {
     AdSlot.tsx
     Amount.tsx
     BottomCTA.tsx
+    BreakdownSection.tsx
     Card.tsx
     CountUp.tsx
     FloatingTabBar.tsx
@@ -226,6 +227,7 @@ export interface RouteState {
 - AdSlot.tsx: AdSlot
 - Amount.tsx: Amount
 - BottomCTA.tsx: SubmitFooter, ButtonStack
+- BreakdownSection.tsx: BreakdownSection
 - Card.tsx: Card
 - CountUp.tsx: CountUp
 - FloatingTabBar.tsx: FloatingTabBar
@@ -243,7 +245,7 @@ export interface RouteState {
   lib/pension.ts → imports: lib/policy, lib/types
   lib/schedule.ts → imports: lib/types
   lib/storedInput.ts → imports: lib/validation, lib/types
-  lib/validation.ts → imports: lib/schedule, lib/calculator, lib/pension, lib/policy, lib/utils, lib...
+  lib/validation.ts → imports: lib...
 CRITICAL: Before creating any new function, type, or component, check the list above. If something similar exists, import and use it.
 
 ## Already Implemented (do NOT duplicate or overwrite)
@@ -251,11 +253,9 @@ CRITICAL: Before creating any new function, type, or component, check the list a
 - 0002: Core Logic: 소득인정액·판정·수령액 (files: src/lib/calculator.ts, src/lib/pension.ts, src/lib/calculator.test.ts)
 - 0003: Schedule, Validation & runDiagnosis (files: src/lib/schedule.ts, src/lib/validation.ts, src/lib/validation.test.ts)
 - 0004: Input Sanitize & Safe Storage (files: src/lib/sanitize.ts, src/lib/storedInput.ts, src/lib/storedInput.test.ts)
+- 0005: Home Page: 입력 폼·검증·제출 (files: src/pages/Home.tsx)
 
 ## Available exports from existing files
-// src/App.tsx
-export default function App() {
-
 // src/components/AdSlot.tsx
 export function AdSlot({ adGroupId, className, variant, theme }: AdSlotProps) {
 
@@ -265,6 +265,9 @@ export function Amount({
 // src/components/BottomCTA.tsx
 export function SubmitFooter({
 export function ButtonStack({
+
+// src/components/BreakdownSection.tsx
+export default function BreakdownSection({ income, property }: BreakdownSectionProps) {
 
 // src/components/Card.tsx
 export function Card({
@@ -319,9 +322,7 @@ export function getThreshold(hasSpouse: boolean): number {
 export function judge(
 
 // src/lib/contract.ts
-export type Region = '서울'|'경기'|'인천'|'강원'|'충청'|'전라'|'경상'|'제주';
-export type Verdict = '받을 가능성이 높아요'|'받을 수 있어요'|'어려울 수 있어요';
-export
+export type Region = '서울'|'경기'|'인천'|'강원'|'충청'|'전
 
 ## Memory Index (자동 학습 — 힌트로만 사용, 실제 코드 확인 필수)
 
