@@ -1,0 +1,359 @@
+[
+  {
+    "id": "0001",
+    "title": "Types & Policy Constants",
+    "epic": "Epic 1: Data Types",
+    "task": {
+      "description": "src/lib/types.ts에 SPEC Data Model의 타입 11개(Region, Verdict, Reduction, AppInput, IncomeBreakdown, PropertyBreakdown, PensionResult, ScheduleResult, AppResult, FormState, RouteState)를 필드명과 타입 그대로 export한다. src/lib/policy.ts에는 2025년 임시 고시값인 정책 상수를 as const로 모은다. 다른 파일에서는 정책 숫자를 이 파일에서만 import해서 쓴다.",
+      "acceptance_criteria": [
+        "types.ts가 SPEC Data Model의 타입 11개를 모두 export하고, 필드명과 타입이 SPEC 코드 블록과 같다(예: PensionResult.recipients는 1 | 2, ScheduleResult.dDay는 number). any 사용은 0건이고 tsc --noEmit이 오류 0건으로 통과한다.",
+        "policy.ts 첫 줄은 정확히 '// ⚠️ 2025년 고시값(임시). 출시 전 해당 연도 보건복지부 고시로 교체·검증 필수' 주석이다.",
+        "policy.ts의 값이 다음과 같다: POLICY_YEAR===2025, THRESHOLD_SINGLE===2280000, THRESHOLD_COUPLE===3648000, BASE_PENSION===342510, EARNED_INCOME_DEDUCTION===1120000, EARNED_INCOME_RATE===0.7, FINANCIAL_DEDUCTION===20000000, BASIC_PROPERTY.metro===135000000, BASIC_PROPERTY.city===85000000, BASIC_PROPERTY.rural===72500000, PROPERTY_CONVERSION_RATE===0.04, COUPLE_REDUCTION===0.2, MIN_PENSION_RATE===0.1. 모두 as const로 export한다.",
+        "AppInput 주석에 'hasSpouse=false면 spouseEligible은 항상 false' 규칙을 명시한다."
+      ]
+    },
+    "covers": [
+      "F1-AC-3",
+      "F2-AC-1",
+      "F3-AC-1"
+    ],
+    "files": [
+      "src/lib/types.ts",
+      "src/lib/policy.ts"
+    ],
+    "definition_of_done": [
+      "tsc --noEmit 통과",
+      "types.ts와 policy.ts 모두 any 0건",
+      "policy.ts 상단에 임시값 경고 주석이 있다"
+    ],
+    "depends_on": [],
+    "db_schema": "localStorage key 'bpc:lastInput' → JSON.stringify(AppInput). 금액은 원 단위, birthDate는 'YYYY-MM-DD'",
+    "api_contract": "export type Region = 'metro'|'city'|'rural'; export type Verdict = 'likely'|'borderline'|'unlikely'; export type Reduction = 'couple'|'incomeReversal'; export interface AppInput/IncomeBreakdown/PropertyBreakdown/PensionResult/ScheduleResult/AppResult/FormState/RouteState (SPEC Data Model과 같음). policy.ts: export const POLICY_YEAR, THRESHOLD_SINGLE, THRESHOLD_COUPLE, BASE_PENSION, EARNED_INCOME_DEDUCTION, EARNED_INCOME_RATE, FINANCIAL_DEDUCTION, BASIC_PROPERTY, PROPERTY_CONVERSION_RATE, COUPLE_REDUCTION, MIN_PENSION_RATE (as const)",
+    "dependencies": [],
+    "ui_requirements": "UI 없음. 타입과 상수만 정의하는 패킷이다."
+  },
+  {
+    "id": "0002",
+    "title": "Core Logic: 소득인정액·판정·수령액",
+    "epic": "Epic 2: Core Logic",
+    "task": {
+      "description": "src/lib/calculator.ts에 순수 함수 calcIncome, calcProperty, getThreshold, judge를 만들고, src/lib/pension.ts에 calcPension을 만든다. 정책 숫자는 모두 policy.ts에서 import하고, 원 단위 결과는 마지막에 Math.floor로 내린다. calculator.test.ts(vitest)에서 SPEC 예시 숫자를 모두 검증한다. 소득평가액, 재산환산액, 비율 판정, 부부 감액, 소득역전 감액과 하한, 기준 초과 시 0원을 다룬다.",
+      "acceptance_criteria": [
+        "calcIncome({monthlyEarnedIncome:2000000, monthlyOtherIncome:0,...}).total===616000이다. 근로소득이 1,120,000 이하이면 earnedReflected===0이다.",
+        "입력 A(배우자 없음, metro, 근로 0, 기타 500,000, 일반재산 200,000,000, 금융재산 30,000,000, 부채 0, 고급자동차·회원권 0)에서 calcProperty(A).total===250000, clamped===false이고, 소득인정액(income.total+property.total)===750000이다.",
+        "일반재산+금융(공제 후)−부채−기본재산이 0 미만이면(예: metro, 일반재산 100,000,000, 나머지 0) calcProperty는 clamped===true, total===0(고급자동차·회원권 0일 때)을 반환한다.",
+        "getThreshold(false)===2280000, getThreshold(true)===3648000이다. judge 결과: 단독 기준 소득인정액 750000이면 'likely', 2100000이면 'borderline'(ratio 0.921…), 2600000이면 'unlikely'(ratio 1.140…)이다. 경계값은 ratio≤0.9이면 likely, ≤1.1이면 borderline이다.",
+        "calcPension: 입력 A이면 recipients 1, perPerson 342510, household 342510, reductions []이다. hasSpouse와 spouseEligible이 모두 true이고 소득인정액이 낮으면 recipients 2, perPerson 274008, reductions에 'couple'이 들어 있다. hasSpouse=true, spouseEligible=false이면 recipients 1이고 'couple'은 없다.",
+        "calcPension 소득역전: 단독, 소득인정액 2,100,000이면 household===180000(179999가 나오면 실패)이고 reductions에 'incomeReversal'이 들어 있다. 부부 2인, 소득인정액 3,400,000이면 household 248000, perPerson 124000이다. 역전 감액 뒤 금액이 하한 floor(342510×0.1)×수급자 수(단독 34251)보다 작으면 하한을 적용한다.",
+        "소득인정액이 선정기준액보다 크면 calcPension은 eligible=false, perPerson=0, household=0을 반환한다.",
+        "npx vitest run src/lib/calculator.test.ts의 모든 케이스가 통과하고, calculator.ts와 pension.ts에 정책 숫자 리터럴이 0건이다(grep으로 2280000|342510|0.04 검색)."
+      ]
+    },
+    "covers": [
+      "F1-AC-1",
+      "F1-AC-2",
+      "F1-AC-3",
+      "F1-AC-4",
+      "F2-AC-1",
+      "F2-AC-2",
+      "F3-AC-1",
+      "F3-AC-2",
+      "F3-AC-3",
+      "F3-AC-4"
+    ],
+    "files": [
+      "src/lib/calculator.ts",
+      "src/lib/pension.ts",
+      "src/lib/calculator.test.ts"
+    ],
+    "definition_of_done": [
+      "vitest가 없으면 devDependency로 추가하고 package.json에 test 스크립트 'vitest run'을 확인",
+      "calculator.test.ts가 SPEC 예시(616,000 / 250,000·750,000 / 비율 3케이스 / clamped / 342,510 / 274,008 / 180,000 / 248,000·124,000 / 하한 / 0원·eligible=false)를 모두 검증하고 전부 통과",
+      "부작용 없는 순수 함수만 있다(Date.now와 localStorage 접근 0건)",
+      "tsc --noEmit 통과"
+    ],
+    "depends_on": [
+      "0001"
+    ],
+    "db_schema": "",
+    "api_contract": "calculator.ts: calcIncome(input: AppInput): IncomeBreakdown; calcProperty(input: AppInput): PropertyBreakdown (general·financial은 +, debt·basicDeduction은 − 부호의 월 환산액, luxury는 원 그대로, total = floor(max(0, 합)×0.04÷12) + luxury, clamped = 괄호 안 값이 0 미만); getThreshold(hasSpouse: boolean): number; judge(recognizedIncome: number, threshold: number): { ratio: number; verdict: Verdict }. pension.ts: calcPension(input: AppInput, recognizedIncome: number, threshold: number): PensionResult (recipients = hasSpouse && spouseEligible ? 2 : 1)",
+    "dependencies": [
+      "vitest (devDependency, 없을 때만)"
+    ],
+    "ui_requirements": "UI 없음. 순수 계산 로직 패킷이다."
+  },
+  {
+    "id": "0003",
+    "title": "Schedule, Validation & runDiagnosis",
+    "epic": "Epic 2: Core Logic",
+    "task": {
+      "description": "src/lib/schedule.ts에 calcSchedule(birthDate, today)를 만든다. 만 65세 생일, 전달 1일 신청 시작일, D-day, 만 나이를 계산한다. src/lib/validation.ts에는 validateForm, toAppInput, runDiagnosis와 금액 상한 상수, 생년월일·금액 검증 함수를 만들고 export한다. 금액은 AC-INPUT-3의 우선순위(정수, 음수, 그 외)로 검증한다. validation.test.ts에서 일정 계산과 검증 케이스를 모두 테스트한다.",
+      "acceptance_criteria": [
+        "today=2026-09-30 기준 calcSchedule 결과: '1961-11-10'이면 turns65On '2026-11-10', applyFrom '2026-10-01', canApplyNow false, dDay 1, age 64이다. '1961-04-15'이면 applyFrom '2026-03-01', canApplyNow true, dDay 0, age 65이다. '1960-02-29'이면 turns65On '2025-03-01'이다.",
+        "validateForm의 금액 칸 오류 문구: '12.5'와 'abc'는 '만 원 단위 정수로 입력해 주세요'이다. '-5'는 '0 ~ 10,000만 원 사이로 입력해 주세요'(소득 칸) 또는 '0 ~ 1,000,000만 원 사이로 입력해 주세요'(재산·부채·자동차 칸)이다. '0050'은 오류가 없고, toAppInput에서 500000원이 된다. 빈 문자열은 오류가 없고 0원이 된다. 소득 칸 '10001'은 범위 오류이다.",
+        "validateForm의 생년월일 오류 문구: '1961111'(7자리), '19610231'(존재하지 않는 날짜), '18991231'(1900-01-01 이전), 오늘 이후 날짜는 모두 '올바른 생년월일을 입력해 주세요'이다. 생년월일이 비어 있거나 hasSpouse===null 또는 region===null이면 missingRequired===true이다.",
+        "toAppInput: form.hasSpouse=false, spouseEligible=true이면 결과의 spouseEligible===false이다. birthDate '19611110'은 '1961-11-10'이 되고, 금액은 만 원 × 10,000으로 원 단위가 된다.",
+        "runDiagnosis(입력 A, today): recognizedIncome 750000, threshold 2280000, verdict 'likely', pension.perPerson 342510, policyYear 2025인 AppResult를 반환한다. 결과 숫자 중 NaN이나 Infinity가 있으면 Error를 throw한다.",
+        "npx vitest run src/lib/validation.test.ts가 위 케이스를 모두 포함하고 전부 통과한다."
+      ]
+    },
+    "covers": [
+      "F4-AC-1",
+      "F4-AC-2",
+      "F4-AC-3",
+      "F4-AC-4",
+      "AC-INPUT-2",
+      "AC-INPUT-3",
+      "AC-INPUT-4",
+      "AC-ERROR"
+    ],
+    "files": [
+      "src/lib/schedule.ts",
+      "src/lib/validation.ts",
+      "src/lib/validation.test.ts"
+    ],
+    "definition_of_done": [
+      "날짜 계산은 로컬 자정 기준 Date만 쓴다(타임존 때문에 하루가 밀리지 않는지 테스트로 확인)",
+      "금액 상한 상수 AMOUNT_LIMIT_MANWON = { income: 10000, asset: 1000000 }와 검증 함수를 export해서 0004가 재사용할 수 있다",
+      "오류 문구가 SPEC 문구와 글자 하나까지 같다",
+      "vitest 전부 통과, tsc --noEmit 통과"
+    ],
+    "depends_on": [
+      "0002"
+    ],
+    "db_schema": "",
+    "api_contract": "schedule.ts: calcSchedule(birthDate: string /*YYYY-MM-DD*/, today: Date): ScheduleResult (turns65On·applyFrom은 'YYYY-MM-DD', canApplyNow면 dDay=0). validation.ts: AMOUNT_LIMIT_MANWON; isValidBirthDate(yyyymmdd: string, today: Date): boolean; validateAmountText(text: string, kind: 'income'|'asset'): string | undefined; validateForm(form: FormState, today: Date): { errors: Partial<Record<keyof FormState, string>>; missingRequired: boolean; valid: boolean }; toAppInput(form: FormState): AppInput; runDiagnosis(input: AppInput, today: Date): AppResult (NaN/Infinity가 있으면 throw)",
+    "dependencies": [],
+    "ui_requirements": "UI 없음. 오류 문구 3종은 SPEC과 정확히 같아야 한다: '올바른 생년월일을 입력해 주세요', '0 ~ {상한}만 원 사이로 입력해 주세요'(상한은 formatNumber 형식, 예: 10,000), '만 원 단위 정수로 입력해 주세요'."
+  },
+  {
+    "id": "0004",
+    "title": "Input Sanitize & Safe Storage",
+    "epic": "Epic 2: Core Logic",
+    "task": {
+      "description": "src/lib/sanitize.ts에 sanitizeAmount(쉼표와 공백만 제거)와 sanitizeBirthDate(숫자만 남기고 앞 8자리)를 만든다. src/lib/storedInput.ts에는 'bpc:lastInput'용 saveLastInput(boolean 반환, 예외 전파 없음), loadLastInput(손상된 값이면 null을 반환하고 키 삭제), toFormState(AppInput을 폼 미리 채우기용으로 변환)를 만든다. 템플릿 localStorage helper를 쓰고, 검증은 validation.ts 함수를 재사용한다.",
+      "acceptance_criteria": [
+        "sanitizeAmount('1,500')==='1500', sanitizeAmount(' 12 ')==='12', sanitizeAmount('12.5')==='12.5'(그대로), sanitizeAmount('abc')==='abc'이다. 숫자만 뽑아내는 처리는 0건이다.",
+        "sanitizeBirthDate('1961-11-10')==='19611110', sanitizeBirthDate('1961.11.10')==='19611110', sanitizeBirthDate('196111101234')==='19611110'이다.",
+        "storage set이 QuotaExceededError를 throw하도록 mock해도 saveLastInput(A)는 false를 반환하고 예외를 전파하지 않는다. console.error 호출은 0회이다.",
+        "localStorage 'bpc:lastInput'이 '{bad json', '{\"region\":\"seoul\"}', 금액 필드 -1인 JSON 중 하나이면 loadLastInput()===null이고 키가 삭제된다. 읽기(getItem)나 삭제가 throw해도 null을 반환하고 예외는 0건이다.",
+        "입력 A를 saveLastInput한 뒤 loadLastInput()을 호출하면 A와 deepEqual인 객체가 나온다. toFormState(A)는 other '50', general '20000', financial '3000', birthDate는 8자리 숫자 문자열이다.",
+        "storedInput.ts에 금액 상한이나 날짜 경계 숫자 리터럴이 0건이다(validation.ts export를 재사용)."
+      ]
+    },
+    "covers": [
+      "AC-INPUT-3",
+      "AC-STORAGE-1",
+      "AC-STORAGE-2"
+    ],
+    "files": [
+      "src/lib/sanitize.ts",
+      "src/lib/storedInput.ts",
+      "src/lib/storedInput.test.ts"
+    ],
+    "definition_of_done": [
+      "storedInput.test.ts에 sanitize 케이스와 storage 케이스(bad json, region seoul, -1, 입력 A 왕복, set throw)가 모두 있고 전부 통과",
+      "템플릿 storage helper의 실제 API를 확인한 뒤 사용한다. helper가 파싱 오류를 삼켜 손상 여부를 구분할 수 없으면 window.localStorage를 try/catch로 직접 호출한다",
+      "tsc --noEmit 통과"
+    ],
+    "depends_on": [
+      "0003"
+    ],
+    "db_schema": "localStorage key 'bpc:lastInput' → JSON AppInput. 유효 조건: region ∈ {metro, city, rural}, hasSpouse·spouseEligible은 boolean, 금액 6개는 유한수이면서 0 이상 상한×10,000 이하, birthDate는 'YYYY-MM-DD'이면서 isValidBirthDate 통과. 조건에 맞지 않으면 null을 반환하고 키를 삭제한다.",
+    "api_contract": "sanitize.ts: sanitizeAmount(raw: string): string; sanitizeBirthDate(raw: string): string. storedInput.ts: LAST_INPUT_KEY = 'bpc:lastInput'; saveLastInput(input: AppInput): boolean; loadLastInput(today?: Date): AppInput | null; toFormState(input: AppInput): FormState",
+    "dependencies": [],
+    "ui_requirements": "UI 없음. 저장 실패와 손상 복구는 사용자에게 보이는 UI 없이 조용히 처리한다(AlertDialog 0건)."
+  },
+  {
+    "id": "0005",
+    "title": "Home Page: 입력 폼·검증·제출",
+    "epic": "Epic 3: Pages",
+    "task": {
+      "description": "src/pages/Home.tsx에 Blueprint의 Home 화면을 TDS로 조립한다. 구성은 Top, 생년월일 TextField, 배우자 Chip과 Switch, 지역 Chip, 금액 TextField 6개, AdSlot, SubmitFooter, AlertDialog이다. blur 뒤에만 오류를 보이고, 입력을 정제하고, 배우자 없음을 고르면 Switch 값을 초기화한다. 반복 탭은 submittingRef로 막는다. 제출 순서는 runDiagnosis → saveLastInput(실패해도 이동) → navigate('/result')이고, 미리 채우기는 loadLastInput으로 한다.",
+      "acceptance_criteria": [
+        "처음 렌더할 때 hasError=true인 TextField는 0개이다. 필드에 blur가 1회 이상 일어난 뒤에만 hasError와 help가 표시된다.",
+        "생년월일, 배우자 Chip, 지역 Chip 중 하나라도 비어 있으면 '진단하기'는 disabled이고, hint는 정확히 '생년월일·배우자 유무·거주 지역을 입력해 주세요'이다. 금액 칸이 비어 있으면 0으로 계산한다.",
+        "생년월일 칸(maxLength 10)에 '1961-11-10'을 붙여 넣으면 값이 '19611110'이 된다. 금액 칸에 '1,500'을 넣으면 '1500'이 되고, '12.5'는 그대로 남아 blur 뒤 '만 원 단위 정수로 입력해 주세요'가 표시되며 CTA가 disabled이다.",
+        "배우자 '있음'을 고르고 Switch를 켠 뒤 '없음'으로 바꾸면 Switch 렌더가 0개가 된다. 이 상태로 진단하면 result.pension.recipients===1이고 reductions에 'couple'이 0건이다. 다시 '있음'을 고르면 Switch는 꺼져 있다.",
+        "'진단하기'를 빠르게 3회 탭해도 runDiagnosis는 1회만 호출된다. 이동하기 전까지 버튼은 disabled이다(SubmitFooter가 loading prop을 지원하면 loading=true).",
+        "saveLastInput이 false를 반환해도 navigate('/result', { state: { input, result } })가 실행된다. runDiagnosis가 throw하면 AlertDialog '계산 중 문제가 생겼어요'와 [다시 시도] 버튼이 보인다.",
+        "localStorage에 유효한 입력 A가 있으면 폼이 그 값으로 미리 채워진다. '{bad json'이면 빈 폼으로 시작하고 빨간 칸은 0개이다.",
+        "모든 TextField에 aria-label이 있고 onFocus에서 scrollIntoView({ block: 'center' })를 호출한다. 인라인 margin·padding style, HEX, rgb( 는 0건이다.",
+        "VITE_TOSS_AD_GROUP_ID 없이 실행해도 폼 조작과 제출이 된다. 광고 오류 문구는 0건이고, AdSlot은 SubmitFooter 밖에 있다."
+      ]
+    },
+    "covers": [
+      "F1-AC-5",
+      "AC-INPUT-1",
+      "AC-INPUT-2",
+      "AC-INPUT-3",
+      "AC-INPUT-4",
+      "AC-LOADING",
+      "AC-ERROR",
+      "AC-KEYBOARD",
+      "AC-A11Y-1",
+      "AC-A11Y-2",
+      "AC-A11Y-3",
+      "AC-AD-ERROR",
+      "AC-STORAGE-1",
+      "AC-STORAGE-2",
+      "AC-REVIEW-2"
+    ],
+    "files": [
+      "src/pages/Home.tsx"
+    ],
+    "definition_of_done": [
+      "TDS 컴포넌트와 템플릿 SubmitFooter·AdSlot만 사용(shadcn/MUI 0건). 간격은 Spacing만 쓴다",
+      "햅틱: 진단하기에 success, ChipItem·Switch·다시 시도에 tickWeak(@apps-in-toss/web-framework의 generateHapticFeedback)",
+      "today는 new Date()를 한 번만 만들어 validateForm과 runDiagnosis에 넘긴다",
+      "정상 흐름에서 console.error 0회, tsc --noEmit 통과"
+    ],
+    "depends_on": [
+      "0003",
+      "0004"
+    ],
+    "db_schema": "제출할 때 'bpc:lastInput'에 AppInput을 saveLastInput으로 저장하고, 마운트할 때 loadLastInput으로 읽는다",
+    "api_contract": "export default function Home(): JSX.Element. navigate('/result', { state: RouteState })",
+    "dependencies": [
+      "@toss/tds-mobile",
+      "react-router-dom",
+      "@apps-in-toss/web-framework"
+    ],
+    "ui_requirements": "[공통 규칙]\n- 화면은 2개이고 입력에서 결과로 이동하는 계층 구조다. FloatingTabBar는 쓰지 않는다.\n- AI 고지(Pattern G·H)는 넣지 않는다. 규칙 기반 계산기라서다.\n- 보조 텍스트 색은 var(--adaptiveGrey600)만 쓴다. HEX와 rgb( 는 금지한다.\n- 커스텀 CSS는 Result의 Badge 가로 배치 flex div 1곳에만 쓴다.\n- 금액은 formatCurrency, 비율·D-day·나이는 formatNumber로 표시한다.\n- inputMode, maxLength, aria-label은 TextField가 input에 넘겨 주는 네이티브 속성으로 쓴다(AC-INPUT-3, AC-A11Y-1).\n- Switch는 TDS 기본 API인 checked/onChange를 쓴다.\n\n## Screen: Home (/)\n### Pattern\nInputForm\n\n### TDS Components (whitelist)\nTop, Paragraph, Spacing, TextField, Chip, ChipItem, ListRow, Switch, AlertDialog. 템플릿 컴포넌트는 SubmitFooter, AdSlot\n\n### Layout\n<Top title={<Top.TitleParagraph>부모님 기초연금</Top.TitleParagraph>} />\n<Spacing size={8} />\n<Paragraph.Text typography=\"t6\" color=\"var(--adaptiveGrey600)\">소득과 재산을 넣으면 받을 수 있을지 알려드려요</Paragraph.Text>\n<Spacing size={24} />\n<TextField variant=\"box\" label=\"부모님 생년월일\" labelOption=\"sustain\" placeholder=\"예: 19611110\"\n  inputMode=\"numeric\" maxLength={10} aria-label=\"부모님 생년월일\"\n  value={form.birthDate} onChange={(e) => set('birthDate', sanitizeBirthDate(e.target.value))}\n  onFocus={scrollCenter} onBlur={() => touch('birthDate')}\n  hasError={touched.birthDate && !!errors.birthDate} help={touched.birthDate ? errors.birthDate : undefined} />\n<Spacing size={24} />\n<Paragraph.Text typography=\"t5\">배우자</Paragraph.Text>   // Pattern F\n<Spacing size={12} />\n<Chip kind=\"select\">\n  <ChipItem selected={form.hasSpouse === false} onClick={() => setSpouse(false)}>없음</ChipItem>  // spouseEligible=false 초기화\n  <ChipItem selected={form.hasSpouse === true} onClick={() => setSpouse(true)}>있음</ChipItem>\n</Chip>\n{form.hasSpouse === true && (\n  <ListRow contents={<ListRow.Texts type=\"1RowTypeA\" top=\"배우자도 만 65세 이상이에요\" />}\n    right={<Switch checked={form.spouseEligible} onChange={toggleSpouseEligible} aria-label=\"배우자도 만 65세 이상이에요\" />} />\n)}\n<Spacing size={24} />\n<Paragraph.Text typography=\"t5\">거주 지역</Paragraph.Text>\n<Spacing size={12} />\n<Chip kind=\"select\">{REGIONS.map((r) => <ChipItem key={r.value} selected={form.region === r.value} onClick={() => setRegion(r.value)}>{r.label}</ChipItem>)}</Chip>   // 대도시 · 중소도시 · 농어촌\n<Spacing size={24} />\n<Paragraph.Text typography=\"t5\">월 소득 (만 원)</Paragraph.Text>\n<Spacing size={12} />\n{INCOME_FIELDS.map(renderAmountField)}    // 근로소득(부부 합산) · 기타소득(연금·사업·임대 등), placeholder \"예: 150\"\n<Spacing size={24} />\n<Paragraph.Text typography=\"t5\">재산 (만 원)</Paragraph.Text>\n<Spacing size={12} />\n{PROPERTY_FIELDS.map(renderAmountField)}  // 주택·토지 등 일반재산(공시가격) · 예금·주식 등 금융재산 · 부채 · 고급자동차·회원권, placeholder \"예: 20000\"\n// renderAmountField = <TextField variant=\"box\" labelOption=\"sustain\" label aria-label placeholder inputMode=\"numeric\"\n//   onChange={sanitizeAmount} onFocus={scrollCenter} onBlur={touch} hasError help /> + <Spacing size={12} />\n<Spacing size={24} />\n<AdSlot adGroupId={import.meta.env.VITE_TOSS_AD_GROUP_ID} />   // SubmitFooter 밖에 둔다. prop 추가·내부 수정 금지\n<SubmitFooter label=\"진단하기\" onClick={handleSubmit} disabled={!canSubmit || submitting}\n  hint={missingRequired ? \"생년월일·배우자 유무·거주 지역을 입력해 주세요\" : hasErrors ? \"입력한 값을 확인해 주세요\" : undefined} />\n<AlertDialog open={calcError} title=\"계산 중 문제가 생겼어요\" onClose={closeError}\n  alertButton={<AlertDialog.AlertButton onClick={retry}>다시 시도</AlertDialog.AlertButton>} />\n\n### States\n- Loading: '진단하기'를 누른 뒤 이동하기 전까지 submitting=true를 유지한다. submittingRef 가드로 반복 탭에도 계산은 1회만 실행한다. SubmitFooter가 loading prop을 지원하면 loading={submitting}도 넘긴다(AC-LOADING).\n- Empty: 저장값이 없거나 loadLastInput()이 null이면 빈 폼으로 시작한다. 빨간 칸은 0개이고 hint에 필수 입력 안내가 보인다. EmptyState 컴포넌트는 쓰지 않는다.\n- Error: 필드 오류는 blur 뒤에만 hasError와 help로 보인다. 계산 예외나 NaN이 나오면 AlertDialog와 [다시 시도]를 보인다. 저장 실패(saveLastInput이 false 반환)는 무시하고 이동한다(AC-STORAGE-1). 광고 실패에는 별도 UI를 그리지 않는다(AC-AD-ERROR).\n\n### Interactions\n- ChipItem(배우자·지역): 선택 상태를 바꾸고 tickWeak 햅틱을 준다. '없음'을 고르면 spouseEligible=false로 초기화하고 Switch를 언마운트한다.\n- Switch: tickWeak 햅틱.\n- TextField onFocus: e.currentTarget.scrollIntoView({ block: 'center' })로 칸을 화면 가운데로 옮긴다(AC-KEYBOARD).\n- TextField onBlur: touched[field]=true. 이때부터 오류가 보인다.\n- 진단하기: success 햅틱 → validateForm → toAppInput → runDiagnosis(input, today) → saveLastInput(input)(try/catch 안에서) → navigate('/result', { state: { input, result } }).\n- AlertDialog [다시 시도]: 다이얼로그를 닫고 handleSubmit을 다시 실행한다. tickWeak 햅틱.\n\n### 확인이 필요한 곳\n- hint '입력한 값을 확인해 주세요'는 SPEC에 없는 보완 문구다. 필수 항목 누락이 아니라 입력 오류 때문에 CTA가 비활성일 때만 쓴다.\n- SubmitFooter loading prop 지원 여부를 확인한다. 지원하지 않으면 submittingRef 가드와 disabled만으로 AC-LOADING을 충족한다."
+  },
+  {
+    "id": "0006",
+    "title": "BreakdownSection: 소득·재산 환산 내역",
+    "epic": "Epic 3: Pages",
+    "task": {
+      "description": "src/components/BreakdownSection.tsx를 만든다. IncomeBreakdown과 PropertyBreakdown을 props로 받아 두 섹션을 TDS ListRow로 보여 준다. 소득 반영 내역은 행 2개와 소득평가액, 재산 환산 내역(월)은 행 5개와 재산소득환산액이다. 차감 항목에는 '−'를 붙이고, clamped=true일 때만 안내 문구 1줄을 렌더한다. 금액은 모두 formatCurrency로 표시한다.",
+      "acceptance_criteria": [
+        "입력 A의 결과를 넣으면 '소득평가액' 행에 500,000원, '재산소득환산액' 행에 250,000원이 표시된다(formatCurrency 형식).",
+        "재산 섹션에 ListRow가 정확히 6개(일반재산, 금융재산(2천만 원 공제 후), 부채, 기본재산 공제, 고급자동차·회원권, 재산소득환산액) 렌더된다. 부채와 기본재산 공제 금액 앞에는 '−'가 붙는다(예: 기본재산 공제 −450,000원).",
+        "소득 섹션에 ListRow가 정확히 3개(근로소득 반영액, 기타소득, 소득평가액) 렌더된다.",
+        "property.clamped===true일 때만 '공제액이 재산보다 커서 0원으로 계산했어요'가 1회 렌더되고, false이면 0회 렌더된다.",
+        "ListRow에 onClick이 0건이고, HEX, rgb(, 인라인 margin·padding은 0건이다."
+      ]
+    },
+    "covers": [
+      "F2-AC-3",
+      "F2-AC-4",
+      "AC-FORMAT",
+      "AC-A11Y-3"
+    ],
+    "files": [
+      "src/components/BreakdownSection.tsx"
+    ],
+    "definition_of_done": [
+      "props 타입은 { income: IncomeBreakdown; property: PropertyBreakdown }이다(types.ts import)",
+      "금액 표시는 템플릿 formatCurrency만 쓴다(toLocaleString 직접 호출 0건)",
+      "tsc --noEmit 통과"
+    ],
+    "depends_on": [
+      "0001"
+    ],
+    "db_schema": "",
+    "api_contract": "export default function BreakdownSection(props: { income: IncomeBreakdown; property: PropertyBreakdown }): JSX.Element",
+    "dependencies": [
+      "@toss/tds-mobile"
+    ],
+    "ui_requirements": "## Component: BreakdownSection (Result에 삽입)\n### TDS Components (whitelist)\nParagraph, Spacing, ListRow\n\n### Layout\n<Paragraph.Text typography=\"t4\">소득 반영 내역</Paragraph.Text>\n<Spacing size={12} />\n<ListRow contents={<ListRow.Texts type=\"1RowTypeA\" top=\"근로소득 반영액\" />} right={<Paragraph.Text typography=\"t6\">{formatCurrency(income.earnedReflected)}</Paragraph.Text>} />\n<ListRow contents={<ListRow.Texts type=\"1RowTypeA\" top=\"기타소득\" />} right={...formatCurrency(income.other)} />\n<ListRow contents={<ListRow.Texts type=\"1RowTypeA\" top=\"소득평가액\" />} right={<Paragraph.Text typography=\"t5\">{formatCurrency(income.total)}</Paragraph.Text>} />\n<Spacing size={24} />\n<Paragraph.Text typography=\"t4\">재산 환산 내역 (월)</Paragraph.Text>\n<Spacing size={12} />\n{PROPERTY_ROWS.map((r) => <ListRow key={r.key} contents={<ListRow.Texts type=\"1RowTypeA\" top={r.label} />}\n  right={<Paragraph.Text typography=\"t6\">{r.minus ? `−${formatCurrency(Math.abs(v))}` : formatCurrency(v)}</Paragraph.Text>} />)}\n// 일반재산 · 금융재산(2천만 원 공제 후) · 부채(−) · 기본재산 공제(−) · 고급자동차·회원권\n<ListRow contents={<ListRow.Texts type=\"1RowTypeA\" top=\"재산소득환산액\" />} right={<Paragraph.Text typography=\"t5\">{formatCurrency(property.total)}</Paragraph.Text>} />\n{property.clamped && (<><Spacing size={8} />\n  <Paragraph.Text typography=\"t7\" color=\"var(--adaptiveGrey600)\">공제액이 재산보다 커서 0원으로 계산했어요</Paragraph.Text></>)}\n\n### States\n- 부모 화면에서 이미 검증한 AppResult만 받는다. Loading, Empty, Error 상태는 두지 않는다.\n- 입력 A이면 재산소득환산액 250,000원, 소득평가액 500,000원이 표시되어야 한다."
+  },
+  {
+    "id": "0007",
+    "title": "Result Page: 판정·수령액·신청 시기",
+    "epic": "Epic 3: Pages",
+    "task": {
+      "description": "src/pages/Result.tsx에 Blueprint의 Result 화면을 조립한다. route state를 검증하고, 없으면 useMemo 안에서 loadLastInput으로 복구해 runDiagnosis를 실행한다. 그래도 없으면 EmptyState, 구조가 잘못되었거나 NaN이면 에러 화면을 보여 준다. 판정, 예상 월 수령액과 감액 Badge, 신청 가능 시기, BreakdownSection, 면책 문구, AdSlot, 다시 계산하기 버튼을 둔다. 결과는 모두 무료로 공개하고 TossRewardAd는 0건이다.",
+      "acceptance_criteria": [
+        "입력 A의 route state로 들어오면 판정 문구 '받을 가능성이 높아요', 소득인정액 750,000원, 선정기준액 2,280,000원, 비율 32.9%, 1인 342,510원, 가구 합계 342,510원, Badge '감액 없음'이 표시된다.",
+        "판정 문구 3종('받을 가능성이 높아요' / '기준선 근처예요' / '받기 어려워 보여요')과 감액 라벨 3종('부부 감액 20%' / '소득역전 방지 감액' / '감액 없음')이 SPEC 문구와 정확히 같다. 해당하는 감액 사유는 모두 Badge로 보인다.",
+        "pension.eligible===false이면 Badge 대신 '기준을 넘어 수령액이 없을 것으로 보여요'가 표시되고 금액은 0원이다.",
+        "today=2026-09-30, 1961-11-10생이면 '2026년 10월 1일부터 신청할 수 있어요 (D-1)', '만 64세', Badge 'D-1'이 표시된다. canApplyNow이면 '지금 신청할 수 있어요'와 Badge '신청 가능'이 표시된다.",
+        "route state가 없고 localStorage도 비었거나 '{bad json'이면 EmptyState '아직 진단 결과가 없어요'와 '진단하러 가기' 버튼이 보이고, 버튼을 누르면 '/'로 이동한다. route state가 없고 유효한 lastInput이 있으면 다시 계산한 결과가 보인다.",
+        "route state가 { foo: 1 }처럼 구조가 잘못되었으면 '계산 중 문제가 생겼어요'와 '다시 계산하기' 버튼(누르면 '/'로 이동)이 보이고, 처리되지 않은 예외는 0건이다.",
+        "면책 문구 '2025년 기준 모의 추정이에요. 실제 수급 여부는 국민연금공단·주민센터 조사로 결정돼요.'가 항상 보이고, 이 페이지의 <a href> 수는 0이다.",
+        "금액은 모두 formatCurrency로, 비율·나이·D-day·수급자 수는 formatNumber로 표시한다. TossRewardAd import는 0건이다. 광고 env 없이 실행해도 모든 섹션이 렌더된다."
+      ]
+    },
+    "covers": [
+      "F1-AC-5",
+      "F1-AC-6",
+      "F3-AC-4",
+      "F3-AC-5",
+      "F4-AC-3",
+      "F4-AC-4",
+      "AC-EMPTY",
+      "AC-ERROR",
+      "AC-FORMAT",
+      "AC-REWARD",
+      "AC-A11Y-1",
+      "AC-A11Y-2",
+      "AC-A11Y-3",
+      "AC-AD-ERROR",
+      "AC-STORAGE-2"
+    ],
+    "files": [
+      "src/pages/Result.tsx"
+    ],
+    "definition_of_done": [
+      "isRouteState 타입 가드로 input과 result 구조, 숫자의 유한성을 검증한다",
+      "비율은 formatNumber(Math.round(ratio * 1000) / 10)로 소수 첫째 자리까지 표시한다",
+      "'다시 계산하기'와 '진단하러 가기'는 tickWeak 햅틱 뒤 navigate('/')를 호출하고 aria-label이 있다",
+      "커스텀 CSS는 Badge flex div 1곳뿐이다. tsc --noEmit 통과"
+    ],
+    "depends_on": [
+      "0003",
+      "0004",
+      "0006"
+    ],
+    "db_schema": "route state가 없을 때만 'bpc:lastInput'을 loadLastInput으로 읽는다(쓰기 없음)",
+    "api_contract": "export default function Result(): JSX.Element. useLocation().state as unknown → isRouteState 가드 → RouteState",
+    "dependencies": [
+      "@toss/tds-mobile",
+      "react-router-dom",
+      "@apps-in-toss/web-framework"
+    ],
+    "ui_requirements": "[공통 규칙]\n- 보조 텍스트 색은 var(--adaptiveGrey600)만 쓴다. HEX와 rgb( 는 금지한다.\n- 커스텀 CSS는 Badge 가로 배치 flex div 1곳에만 쓴다.\n- 금액은 formatCurrency, 비율·D-day·나이는 formatNumber로 표시한다. SummaryHero value에는 Amount 대신 Paragraph.Text 안에 formatCurrency 결과를 넣는다.\n- AI 고지 없음. FloatingTabBar 없음.\n\n## Screen: Result (/result)\n### Pattern\nStatusPanel\n\n### TDS Components (whitelist)\nTop, Paragraph, Spacing, ListRow, Badge, Button. 템플릿 컴포넌트는 SummaryHero, EmptyState, AdSlot, 그리고 BreakdownSection\n\n### Layout\n<Top title={<Top.TitleParagraph>진단 결과</Top.TitleParagraph>} />\n<Spacing size={16} />\n<SummaryHero label=\"판정 결과\"\n  value={<Paragraph.Text typography=\"t2\">{VERDICT_TEXT[verdict]}</Paragraph.Text>}  // 받을 가능성이 높아요 / 기준선 근처예요 / 받기 어려워 보여요\n  caption={`선정기준액 대비 ${formatNumber(ratio * 100 /* 소수 첫째 자리 */)}%`} />\n<ListRow contents={<ListRow.Texts type=\"1RowTypeA\" top=\"소득인정액\" />} right={<Paragraph.Text typography=\"t5\">{formatCurrency(recognizedIncome)}</Paragraph.Text>} />\n<ListRow contents={<ListRow.Texts type=\"1RowTypeA\" top=\"선정기준액\" />} right={<Paragraph.Text typography=\"t5\">{formatCurrency(threshold)}</Paragraph.Text>} />\n<Spacing size={24} />\n<Paragraph.Text typography=\"t4\">예상 월 수령액</Paragraph.Text>\n<Spacing size={12} />\n<SummaryHero label={`1인 기준 (수급자 ${formatNumber(recipients)}명)`}\n  value={<Paragraph.Text typography=\"t1\">{formatCurrency(perPerson)}</Paragraph.Text>}\n  caption={`가구 합계 ${formatCurrency(household)}`} />\n<Spacing size={12} />\n{eligible\n  ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>    // 레이아웃 전용 CSS\n      {reductionLabels.map((l) => <Badge key={l} size=\"small\" variant=\"weak\" color={REDUCTION_COLOR[l]}>{l}</Badge>)}\n    </div>   // 부부 감액 20%는 blue, 소득역전 방지 감액은 yellow, 감액 없음은 elephant\n  : <Paragraph.Text typography=\"t6\" color=\"var(--adaptiveGrey600)\">기준을 넘어 수령액이 없을 것으로 보여요</Paragraph.Text>}\n<Spacing size={24} />\n<Paragraph.Text typography=\"t4\">신청 가능 시기</Paragraph.Text>\n<Spacing size={12} />\n<ListRow contents={<ListRow.Texts type=\"2RowTypeA\" top={applyText} bottom={`만 ${formatNumber(age)}세 · 만 65세 생일 ${formatDate(turns65On)}`} />}\n  right={canApplyNow ? <Badge size=\"small\" variant=\"weak\" color=\"green\">신청 가능</Badge>\n                     : <Badge size=\"small\" variant=\"weak\" color=\"blue\">{`D-${formatNumber(dDay)}`}</Badge>} />\n// applyText = canApplyNow ? \"지금 신청할 수 있어요\" : `${Y}년 ${M}월 1일부터 신청할 수 있어요 (D-${formatNumber(dDay)})`\n<Spacing size={24} />\n<BreakdownSection income={result.income} property={result.property} />\n<Spacing size={24} />\n<Paragraph.Text typography=\"t7\" color=\"var(--adaptiveGrey600)\">{`${policyYear}년 기준 모의 추정이에요. 실제 수급 여부는 국민연금공단·주민센터 조사로 결정돼요.`}</Paragraph.Text>  // 링크 0개\n<Spacing size={16} />\n<AdSlot adGroupId={import.meta.env.VITE_TOSS_AD_GROUP_ID} />\n<Spacing size={16} />\n<Button variant=\"fill\" size=\"large\" aria-label=\"다시 계산하기\" onClick={goHome}>다시 계산하기</Button>\n\n### States\n- Loading: 따로 두지 않는다. 계산이 동기라서 route state가 없을 때도 useMemo로 loadLastInput() 복구와 runDiagnosis를 첫 렌더 안에 끝낸다. 빈 프레임은 0이다.\n- Empty: route state가 없고 loadLastInput()도 null이면(손상된 경우 포함, AC-STORAGE-2) 아래를 보인다.\n  <EmptyState title=\"아직 진단 결과가 없어요\" action={<Button variant=\"weak\" aria-label=\"진단하러 가기\" onClick={goHome}>진단하러 가기</Button>} />\n- Error: route state 구조가 잘못되었거나 계산 결과에 NaN이 있으면 아래를 보인다.\n  <Paragraph.Text typography=\"t5\">계산 중 문제가 생겼어요</Paragraph.Text>\n  <Spacing size={16} />\n  <Button variant=\"fill\" size=\"large\" aria-label=\"다시 계산하기\" onClick={goHome}>다시 계산하기</Button>\n- 광고 실패: 모든 섹션을 그대로 렌더한다. 광고 오류 문구는 0건이다(AC-AD-ERROR).\n\n### Interactions\n- '다시 계산하기'와 '진단하러 가기': tickWeak 햅틱 뒤 navigate('/')로 이동한다. Home은 loadLastInput()으로 폼을 미리 채운다.\n- 탭할 수 있는 요소는 이 두 버튼뿐이다. ListRow에는 onClick이 없다. TossRewardAd는 0건이고 결과는 모두 무료로 공개한다."
+  },
+  {
+    "id": "0008",
+    "title": "Routing & Integration",
+    "epic": "Epic 4: Integration & Routing",
+    "task": {
+      "description": "src/App.tsx에 '/'는 Home, '/result'는 Result로 라우트를 등록하고, 정의되지 않은 경로는 Navigate로 '/'에 redirect한다. main.tsx는 수정하지 않는다. main.tsx가 이미 Router로 감싸고 있으면 App은 Routes만 쓰고, 아니면 App에서 BrowserRouter로 감싼다. 심사 체크(외부 링크, 로깅 SDK, console.error 0건)와 광고 env 없이 빌드하는 경우를 통합 검증한다.",
+      "acceptance_criteria": [
+        "'/'에서는 Home이, '/result'에서는 Result가 렌더되고, '/unknown'으로 들어가면 '/'로 이동해 Home이 보인다.",
+        "grep -rE 'href=\"http|window\\.open|gtag|amplitude|location\\.href *=' src 결과가 0건이다.",
+        "입력 A로 입력 → 결과 → 다시 계산 흐름을 실행하는 동안 콘솔 error가 0건이다.",
+        "VITE_TOSS_AD_GROUP_ID를 비운 채 npm run build와 preview를 실행해도 입력 → 결과 → 다시 계산을 끝까지 수행할 수 있다. 앱 코드가 렌더한 광고 오류 문구는 0건이다. 검증 뒤 정상 env로 다시 빌드한다.",
+        "src/main.tsx와 src/components/AdSlot*의 diff가 0줄이다.",
+        "npm run build와 npx vitest run(전체 테스트)이 모두 성공한다."
+      ]
+    },
+    "covers": [
+      "AC-REVIEW-1",
+      "AC-REVIEW-2",
+      "AC-REVIEW-3",
+      "AC-AD-ERROR"
+    ],
+    "files": [
+      "src/App.tsx"
+    ],
+    "definition_of_done": [
+      "react-router-dom의 Routes/Route/Navigate만 쓴다",
+      "FloatingTabBar 렌더 0건(계층형 2화면)",
+      "tsc --noEmit, npm run build, 전체 vitest 통과"
+    ],
+    "depends_on": [
+      "0005",
+      "0007"
+    ],
+    "db_schema": "",
+    "api_contract": "export default function App(): JSX.Element — routes: '/' → <Home/>, '/result' → <Result/>, '*' → <Navigate to='/' replace/>",
+    "dependencies": [
+      "react-router-dom"
+    ],
+    "ui_requirements": "[공통 규칙]\n- 화면은 Home(/)과 Result(/result) 2개이고 입력에서 결과로 이동하는 계층 구조다. 하단 FloatingTabBar는 쓰지 않는다.\n- AI 고지 없음(규칙 기반 계산기).\n- 이 패킷은 새 UI를 만들지 않는다. 라우트 연결만 하고 각 화면은 0005와 0007의 Blueprint를 따른다.\n- 외부 링크(<a href=\"http…\">, window.open)와 외부 로깅 SDK는 0건이다."
+  }
+]
