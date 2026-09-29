@@ -37,12 +37,12 @@ export default function Home() {
 
   return (
     <ScreenScaffold
-      top={<Top title={<Top.TitleParagraph>Parents Basic Pension Check</Top.TitleParagraph>} />}
+      top={<Top title={<Top.TitleParagraph>부모님 기초연금</Top.TitleParagraph>} />}
     >
       {/* 시각 앵커: 헤드라인 + 카드 내 진입 버튼(부유 금지, display="block" 전체폭).
           데이터 앱이면 value를 <Amount typography="t1" />(핵심 숫자)로 교체하라. */}
       <SummaryHero
-        label="Parents Basic Pension Check"
+        label="부모님 기초연금"
         value={<Paragraph.Text typography="t2">우리 부모님 기초연금 받을 수 있을까? 소득·재산 넣고 1분 진단</Paragraph.Text>}
         caption="로그인 없이 바로 쓸 수 있어요"
         action={
