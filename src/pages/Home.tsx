@@ -15,8 +15,15 @@ import type { FormState, Region, RouteState } from '@/lib/types';
 type AmountKey = 'earned' | 'other' | 'general' | 'financial' | 'debt' | 'luxury';
 type FieldKey = 'birthDate' | AmountKey;
 
-const HINT_MISSING = '생년월일·배우자 유무·거주 지역을 입력해 주세요';
-const HINT_INVALID = '입력한 값을 확인해 주세요';
+/** 아직 비어 있는 필수 항목만 골라 안내한다(셋 다 비면 기존 문구 그대로). */
+function missingHint(form: FormState): string {
+  const names: string[] = [];
+  if (form.birthDate.trim() === '') names.push('생년월일');
+  if (form.hasSpouse === null) names.push('배우자 유무');
+  if (form.region === null) names.push('거주 지역');
+  return `${names.join('·')}을 입력해 주세요`.replace('배우자 유무을', '배우자 유무를').replace('지역을', '지역을');
+}
+const HINT_INVALID = '빨간 표시된 칸을 고쳐 주세요';
 
 const REGIONS: { value: Region; label: string }[] = [
   { value: 'metro', label: '대도시' },
@@ -184,7 +191,7 @@ export default function Home() {
           }}
           disabled={!valid || submitting}
           loading={submitting}
-          hint={missingRequired ? HINT_MISSING : hasErrors ? HINT_INVALID : undefined}
+          hint={missingRequired ? missingHint(form) : hasErrors ? HINT_INVALID : undefined}
         />
       }
     >
@@ -196,9 +203,9 @@ export default function Home() {
 
       <TextField
         variant="box"
-        label="부모님 생년월일"
+        label="생년월일 (연금 받을 분)"
         labelOption="sustain"
-        aria-label="부모님 생년월일"
+        aria-label="생년월일 (연금 받을 분)"
         placeholder="예: 19611110"
         inputMode="numeric"
         enterKeyHint="next"
@@ -217,7 +224,7 @@ export default function Home() {
 
       <Paragraph.Text typography="t5">배우자</Paragraph.Text>
       <Spacing size={12} />
-      <Chip kind="select">
+      <Chip kind="select" variant="fill">
         <ChipItem selected={form.hasSpouse === false} onClick={() => setSpouse(false)}>
           없음
         </ChipItem>
@@ -241,7 +248,7 @@ export default function Home() {
 
       <Paragraph.Text typography="t5">거주 지역</Paragraph.Text>
       <Spacing size={12} />
-      <Chip kind="select">
+      <Chip kind="select" variant="fill">
         {REGIONS.map((r) => (
           <ChipItem key={r.value} selected={form.region === r.value} onClick={() => setRegion(r.value)}>
             {r.label}
