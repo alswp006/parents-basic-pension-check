@@ -6,6 +6,6 @@ export function formatNumber(n: number): string {
   return new Intl.NumberFormat('ko-KR').format(n);
 }
 
-export function formatCurrency(n: number, currency = 'KRW'): string {
-  return new Intl.NumberFormat('ko-KR', { style: 'currency', currency }).format(n);
+export function formatCurrency(n: number): string {
+  return `${formatNumber(n)}원`;
 }
