@@ -255,6 +255,7 @@ CRITICAL: Before creating any new function, type, or component, check the list a
 - 0004: Input Sanitize & Safe Storage (files: src/lib/sanitize.ts, src/lib/storedInput.ts, src/lib/storedInput.test.ts)
 - 0005: Home Page: 입력 폼·검증·제출 (files: src/pages/Home.tsx)
 - 0008: Routing & Integration (files: src/App.tsx)
+- 0006: BreakdownSection: 소득·재산 환산 내역 (files: src/components/BreakdownSection.tsx)
 
 ## Available exports from existing files
 // src/App.tsx
@@ -269,6 +270,9 @@ export function Amount({
 // src/components/BottomCTA.tsx
 export function SubmitFooter({
 export function ButtonStack({
+
+// src/components/BreakdownSection.tsx
+export default function BreakdownSection({ income, property }: BreakdownSectionProps) {
 
 // src/components/Card.tsx
 export function Card({
@@ -323,9 +327,7 @@ export function getThreshold(hasSpouse: boolean): number {
 export function judge(
 
 // src/lib/contract.ts
-export type Region = '서울'|'경기'|'인천'|'강원'|'충청'|'전라'|'경상'|'제주';
-export type Verdict = '받을 가능성이 높아요'|'받을 수 있어요'|'어려울 수 있어요';
-export
+
 
 ## Memory Index (자동 학습 — 힌트로만 사용, 실제 코드 확인 필수)
 
