@@ -174,7 +174,7 @@ export default function Result() {
   const { pension, schedule } = result;
   const reductionLabels =
     pension.reductions.length > 0 ? pension.reductions.map((r) => REDUCTION_TEXT[r]) : [NO_REDUCTION];
-  const ratioPercent = Math.round(result.ratio * 1000) / 10;
+  const ratioText = (Math.round(result.ratio * 1000) / 10).toFixed(1);
   const applyText = schedule.canApplyNow
     ? '지금 신청할 수 있어요'
     : `${formatDate(schedule.applyFrom)}부터 신청할 수 있어요 (D-${formatNumber(schedule.dDay)})`;
@@ -186,7 +186,7 @@ export default function Result() {
         testId="verdict-card"
         label="판정 결과"
         value={<Paragraph.Text typography="t2">{VERDICT_TEXT[result.verdict]}</Paragraph.Text>}
-        caption={`선정기준액 대비 ${formatNumber(ratioPercent)}%`}
+        caption={`선정기준액 대비 ${ratioText}%`}
       />
       <ListRow
         contents={<ListRow.Texts type="1RowTypeA" top="소득인정액" />}
