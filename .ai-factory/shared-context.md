@@ -70,8 +70,90 @@ export type validateFormFn = (form:
 
 ## Shared Types Contract (IMPORT these, do NOT redefine)
 ```typescript
-// Domain types — add your app-specific types here
-export {};
+// Domain types — SPEC Data Model
+export type Region = 'metro' | 'city' | 'rural';
+export type Verdict = 'likely' | 'borderline' | 'unlikely';
+export type Reduction = 'couple' | 'incomeReversal';
+
+/** 계산 입력. 금액은 원 단위, birthDate는 'YYYY-MM-DD'. localStorage 'bpc:lastInput'에 저장된다. */
+export interface AppInput {
+  birthDate: string; // 'YYYY-MM-DD'
+  hasSpouse: boolean;
+  /** 배우자도 만 65세 이상. 규칙: hasSpouse=false면 spouseEligible은 항상 false */
+  spouseEligible: boolean;
+  region: Region;
+  monthlyEarnedIncome: number; // 원, 부부 합산
+  monthlyOtherIncome: number; // 원
+  generalProperty: number; // 원
+  financialProperty: number; // 원
+  debt: number; // 원
+  luxuryAssets: number; // 원 (고급자동차·회원권 가액, 월 소득으로 100% 반영)
+}
+
+export interface IncomeBreakdown {
+  earnedReflected: number;
+  other: number;
+  total: number;
+}
+
+export interface PropertyBreakdown {
+  // 모두 월 환산액(부호 포함)
+  general: number;
+  financial: number;
+  debt: number;
+  basicDeduction: number;
+  luxury: number;
+  clamped: boolean;
+  total: number;
+}
+
+export interface PensionResult {
+  eligible: boolean;
+  recipients: 1 | 2;
+  perPerson: number;
+  household: number;
+  reductions: Reduction[];
+}
+
+export interface ScheduleResult {
+  age: number;
+  turns65On: string;
+  applyFrom: string;
+  canApplyNow: boolean;
+  dDay: number; // canApplyNow면 dDay=0
+}
+
+export interface AppResult {
+  income: IncomeBreakdown;
+  property: PropertyBreakdown;
+  recognizedIncome: number;
+  threshold: number;
+  ratio: number;
+  verdict: Verdict;
+  pension: PensionResult;
+  schedule: ScheduleResult;
+  policyYear: number;
+}
+
+// Home 폼 상태 (문자열 입력, 금액은 만 원 단위)
+export interface FormState {
+  birthDate: string;
+  hasSpouse: boolean | null;
+  spouseEligible: boolean;
+  region: Region | null;
+  earned: string;
+  other: string;
+  general: string;
+  financial: string;
+  debt: string;
+  luxury: string;
+}
+
+// Route state (react-router useNavigate)
+export interface RouteState {
+  input: AppInput;
+  result: AppResult;
+}
 
 ```
 
@@ -96,6 +178,8 @@ export {};
   hooks/
   lib/
     analytics.ts
+    contract.ts
+    policy.ts
     review.ts
     share.ts
     storage.ts
@@ -114,9 +198,12 @@ export {};
 
 ### Exports (src/lib/)
 - analytics.ts: export type LogFields = Record<string, string | number | boolean | null>; export const DWELL_MS = 3000; export function fireAndForget(call: () => unknown): void; export function logScreen(page: string, extra?: LogFields): void; export function logClick(name: string, extra?: LogFields): void; export function logImpression(name: string, extra?: LogFields): void; export function useScreenLog(page: string): void
+- contract.ts: export type Region = '서울'|'경기'|'인천'|'강원'|'충청'|'전라'|'경상'|'제주'; export type Verdict = '받을 가능성이 높아요'|'받을 수 있어요'|'어려울 수 있어요'; export type Reduction =; export type AppInput =; export type IncomeBreakdown =; export type PropertyBreakdown =; export type PensionResult =; export type ScheduleResult =
+- policy.ts: export const POLICY_YEAR = 2025 as const; export const THRESHOLD_SINGLE = 2280000 as const; export const THRESHOLD_COUPLE = 3648000 as const; export const BASE_PENSION = 342510 as const; export const EARNED_INCOME_DEDUCTION = 1120000 as const; export const EARNED_INCOME_RATE = 0.7 as const; export const FINANCIAL_DEDUCTION = 20000000 as const; export const BASIC_PROPERTY =
 - review.ts: export function requestReviewOnce(key: string = REVIEW_REQUESTED_KEY): void
 - share.ts: export interface ShareAppOptions; export async function shareApp(opts: ShareAppOptions): Promise<void>
 - storage.ts: export function getItem<T>(key: string): T | null; export function setItem<T>(key: string, value: T): void; export function removeItem(key: string): void
+- types.ts: export type Region = 'metro' | 'city' | 'rural'; export type Verdict = 'likely' | 'borderline' | 'unlikely'; export type Reduction = 'couple' | 'incomeReversal'; export interface AppInput; export interface IncomeBreakdown; export interface PropertyBreakdown; export interface PensionResult; export interface ScheduleResult
 - utils.ts: export function cn(...classes: (string | boolean | undefined | null)[]): string; export function formatNumber(n: number): string; export function formatCurrency(n: number, currency = 'KRW'): string
 
 ### Components (src/components/)
@@ -135,6 +222,9 @@ export {};
 - TossPurchase.tsx: TossPurchase
 - TossRewardAd.tsx: TossRewardAd
 CRITICAL: Before creating any new function, type, or component, check the list above. If something similar exists, import and use it.
+
+## Already Implemented (do NOT duplicate or overwrite)
+- 0001: Types & Policy Constants (files: src/lib/types.ts, src/lib/policy.ts)
 
 ## Available exports from existing files
 // src/App.tsx
