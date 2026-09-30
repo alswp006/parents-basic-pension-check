@@ -1,12 +1,13 @@
 import { useRef, useState } from 'react';
 import type { FocusEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertDialog, Chip, ChipItem, ListRow, Paragraph, Spacing, Switch, TextField, Top } from '@toss/tds-mobile';
+import { AlertDialog, Button, Chip, ChipItem, ListRow, Paragraph, Spacing, Switch, TextField, Top } from '@toss/tds-mobile';
 import { generateHapticFeedback } from '@apps-in-toss/web-framework';
 import { ScreenScaffold } from '@/components/ScreenScaffold';
 import { SubmitFooter } from '@/components/BottomCTA';
 import { AdSlot } from '@/components/AdSlot';
 import { logClick } from '@/lib/analytics';
+import { shareApp } from '@/lib/share';
 import { sanitizeAmount, sanitizeBirthDate } from '@/lib/sanitize';
 import { loadLastInput, saveLastInput, toFormState } from '@/lib/storedInput';
 import { runDiagnosis, toAppInput, validateForm } from '@/lib/validation';
@@ -279,6 +280,24 @@ export default function Home() {
       <Spacing size={12} />
 
       {adGroupId ? <AdSlot adGroupId={adGroupId} /> : null}
+      <Spacing size={12} />
+      <div className="form-inset">
+        <Button
+          variant="weak"
+          size="medium"
+          display="block"
+          aria-label="가족에게 앱 공유하기"
+          onClick={() => {
+            logClick('home_share_tap');
+            void shareApp({
+              message: '부모님이 기초연금을 받을 수 있는지 소득·재산만 넣으면 바로 확인할 수 있어요.',
+              path: '/',
+            });
+          }}
+        >
+          가족에게 앱 공유하기
+        </Button>
+      </div>
       <Spacing size={168} />
       </div>
 

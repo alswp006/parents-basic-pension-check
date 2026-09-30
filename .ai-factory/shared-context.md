@@ -220,7 +220,7 @@ export interface RouteState {
 - storage.ts: export function getItem<T>(key: string): T | null; export function setItem<T>(key: string, value: T): void; export function removeItem(key: string): void
 - storedInput.ts: export const LAST_INPUT_KEY = 'bpc:lastInput'; export function saveLastInput(input: AppInput): boolean; export function loadLastInput(today: Date = new Date()): AppInput | null; export function toFormState(input: AppInput): FormState
 - types.ts: export type Region = 'metro' | 'city' | 'rural'; export type Verdict = 'likely' | 'borderline' | 'unlikely'; export type Reduction = 'couple' | 'incomeReversal'; export interface AppInput; export interface IncomeBreakdown; export interface PropertyBreakdown; export interface PensionResult; export interface ScheduleResult
-- utils.ts: export function cn(...classes: (string | boolean | undefined | null)[]): string; export function formatNumber(n: number): string; export function formatCurrency(n: number, currency = 'KRW'): string
+- utils.ts: export function cn(...classes: (string | boolean | undefined | null)[]): string; export function formatNumber(n: number): string; export function formatCurrency(n: number): string
 - validation.ts: export const AMOUNT_LIMIT_MANWON =; export function isValidBirthDate(yyyymmdd: string, today: Date): boolean; export function validateAmountText(text: string, kind: AmountKind): string | undefined; export function validateForm( form: FormState, today: Date, ):; export function toAppInput(form: FormState): AppInput; export function runDiagnosis(input: AppInput, today: Date): AppResult
 
 ### Components (src/components/)
@@ -245,7 +245,7 @@ export interface RouteState {
   lib/pension.ts → imports: lib/policy, lib/types
   lib/schedule.ts → imports: lib/types
   lib/storedInput.ts → imports: lib/validation, lib/types
-  lib/validation.ts → imports: lib...
+  lib/validation.ts → imports: lib/schedule, lib/cal...
 CRITICAL: Before creating any new function, type, or component, check the list above. If something similar exists, import and use it.
 
 ## Already Implemented (do NOT duplicate or overwrite)
@@ -254,8 +254,9 @@ CRITICAL: Before creating any new function, type, or component, check the list a
 - 0003: Schedule, Validation & runDiagnosis (files: src/lib/schedule.ts, src/lib/validation.ts, src/lib/validation.test.ts)
 - 0004: Input Sanitize & Safe Storage (files: src/lib/sanitize.ts, src/lib/storedInput.ts, src/lib/storedInput.test.ts)
 - 0005: Home Page: 입력 폼·검증·제출 (files: src/pages/Home.tsx)
-- 0008: Routing & Integration (files: src/App.tsx)
 - 0006: BreakdownSection: 소득·재산 환산 내역 (files: src/components/BreakdownSection.tsx)
+- 0007: Result Page: 판정·수령액·신청 시기 (files: src/pages/Result.tsx)
+- 0008: Routing & Integration (files: src/App.tsx)
 
 ## Available exports from existing files
 // src/App.tsx

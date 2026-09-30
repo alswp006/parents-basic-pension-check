@@ -9,6 +9,7 @@ import { AdSlot } from '@/components/AdSlot';
 import BreakdownSection from '@/components/BreakdownSection';
 import { logClick } from '@/lib/analytics';
 import { requestReviewOnce } from '@/lib/review';
+import { shareApp } from '@/lib/share';
 import { loadLastInput } from '@/lib/storedInput';
 import { runDiagnosis } from '@/lib/validation';
 import { formatCurrency, formatNumber } from '@/lib/utils';
@@ -139,6 +140,14 @@ export default function Result() {
     goHome();
   };
 
+  const shareResult = (verdict: Verdict) => {
+    logClick('share_tap');
+    void shareApp({
+      message: `부모님 기초연금 모의 진단: ${VERDICT_TEXT[verdict]}. 생년월일과 소득·재산만 넣으면 바로 확인할 수 있어요.`,
+      path: '/result',
+    });
+  };
+
   const top = <Top title={<Top.TitleParagraph>진단 결과</Top.TitleParagraph>} />;
 
   if (view.kind === 'empty') {
@@ -251,6 +260,16 @@ export default function Result() {
       <Spacing size={16} />
       <Button variant="fill" size="large" display="block" aria-label="다시 계산하기" onClick={recalc}>
         다시 계산하기
+      </Button>
+      <Spacing size={12} />
+      <Button
+        variant="weak"
+        size="large"
+        display="block"
+        aria-label="결과 공유하기"
+        onClick={() => shareResult(result.verdict)}
+      >
+        결과 공유하기
       </Button>
       <Spacing size={24} />
     </ScreenScaffold>
