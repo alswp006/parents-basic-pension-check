@@ -5,6 +5,7 @@ import { generateHapticFeedback } from '@apps-in-toss/web-framework';
 import { ScreenScaffold } from '@/components/ScreenScaffold';
 import { SummaryHero } from '@/components/SummaryHero';
 import { EmptyState } from '@/components/StateView';
+import { SubmitFooter } from '@/components/BottomCTA';
 import { AdSlot } from '@/components/AdSlot';
 import BreakdownSection from '@/components/BreakdownSection';
 import { logClick } from '@/lib/analytics';
@@ -152,15 +153,10 @@ export default function Result() {
 
   if (view.kind === 'empty') {
     return (
-      <ScreenScaffold top={top}>
+      <ScreenScaffold top={top} bottom={<SubmitFooter label="진단하러 가기" onClick={goHome} />}>
         <EmptyState
           title="아직 진단 결과가 없어요"
           description="생년월일과 소득·재산을 넣으면 바로 확인할 수 있어요"
-          action={
-            <Button variant="weak" display="block" aria-label="진단하러 가기" onClick={goHome}>
-              진단하러 가기
-            </Button>
-          }
         />
       </ScreenScaffold>
     );
