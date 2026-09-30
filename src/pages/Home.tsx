@@ -298,7 +298,7 @@ export default function Home() {
           가족에게 앱 공유하기
         </Button>
       </div>
-      <Spacing size={168} />
+      <Spacing size={96} />
       </div>
 
       <AlertDialog
