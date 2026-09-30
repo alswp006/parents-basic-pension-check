@@ -1,41 +1,95 @@
-# Parents Basic Pension Check
+🇺🇸 [한국어](./README.ko.md)
 
-앱 이름: 부모님 기초연금 / Parents Basic Pension Check > ⚠️ **확인이 필요한 수치**: 이 설계는 선정기준액, 기준연금액, 공제액, 기본재산액, 환산율 같은 정책 수치를 쓰지만 IDEA_BRIEF에는 이 값들이 없습니다. 그래서 설계 에이전트가 알고 있던 **2025년 보건복지부 고시값**을 임시로 넣었습니다. 이 값들은 `src/lib/policy.ts` 한 파일에만 모아 두었습니다. **출시 전에 올해(2026) 고시값으로 바꾸고 확인해야 합니다.** 아래 AC 예시는 모두 이 임시값으로 계산했습니다. 값을 바꾸면 예시 숫자도 다시 계산하세요. > 🆕 **시뮬레이션 반영 요약**: 새로 추가한 AC는 5개입니다. 추가한 곳에는 🆕 표시를 붙였습니다.
+# Parents Basic Pension Check — Eligibility Calculator
+
+A Toss mini-app that helps users check if their parents are eligible for Korea's basic pension (기초연금). Users input birth date, spousal status, residential area, monthly income, and property information to receive an instant eligibility diagnosis, estimated monthly benefit amount, and application timing guidance.
+
+## Features
+
+- 📋 Structured input form for parents' personal info (birth date, spouse status, region)
+- 💰 Monthly income entry (earned and other income sources)
+- 🏠 Property assessment (real estate, financial assets, debt, luxury items)
+- ✅ Instant eligibility diagnosis with three verdict levels
+- 💵 Estimated monthly pension benefit calculations (per-person and household)
+- 📅 Application timing with D-day countdown
+- 🏷️ Reduction details (couple discount, income-reversal prevention)
+- 📊 Detailed income/property breakdown display
+- 💾 Automatic form save to device storage
+- 📤 In-app sharing with customized messaging
+- ⭐ App review request on successful diagnosis
+- 📢 Banner ad slot integration
 
 ## Tech Stack
 
-- React 18.0.0
-- TypeScript
-- Vitest
-
-## Routes
-
-| Path | Description |
-|------|-------------|
-| `/Home` | Home |
-| `/Result` | Result |
+- **Framework**: React 18 + Vite
+- **Routing**: React Router 7
+- **UI**: Toss Design System (TDS) — `@toss/tds-mobile`
+- **SDK**: App-in-Toss (`@apps-in-toss/web-framework`)
+- **Language**: TypeScript
+- **Testing**: Vitest (unit), Playwright (visual)
+- **Styling**: Emotion + TDS adaptive CSS variables
 
 ## Getting Started
 
+### Install dependencies
 ```bash
-pnpm install
-pnpm dev
+npm install
 ```
 
-## Development
-
+### Production build
 ```bash
-pnpm typecheck    # Type checking
-pnpm test         # Run tests
-pnpm build        # Production build
+npx vite build
 ```
 
-## Design Documents
+### Deploy to Toss
+```bash
+npx ait build
+```
 
-See `.ai-factory/` directory for full design artifacts:
-- `prd.md` — Product Requirements Document
-- `spec.md` — Technical Specification
-- `task.md` — Epic/Task Breakdown
+Then submit the bundle via the Toss Developer Console for review.
 
----
-Built with [AI Factory](https://github.com/alswp006/ai-factory) · Last synced: 2026-09-29
+### Run tests
+```bash
+npx vitest run              # Unit tests
+npm run test:visual         # Visual regression tests (Playwright)
+```
+
+## Environment Variables
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `VITE_TOSS_AD_GROUP_ID` | Banner ad group ID from Toss Console | No |
+| `VITE_TOSS_AD_SLOT_ID` | Full-screen ad slot ID | No |
+| `VITE_TOSS_IAP_SKU` | In-app purchase SKU | No |
+| `VITE_TOSS_PROMOTION_CODE` | Promotion reward code | No |
+| `VITE_SHARE_OG_URL` | OG image URL for sharing preview | No |
+
+Copy `.env.example` to `.env` and fill in values from the Toss Developer Console. Empty values degrade gracefully (features are omitted, not broken).
+
+## Project Structure
+
+```
+src/
+  pages/              — Screen components (Home, Result)
+  components/         — Reusable TDS-based UI widgets
+  lib/                — Business logic (pension calculation, validation, storage)
+  __tests__/          — Unit and integration tests
+  styles/             — Global styles
+```
+
+## Deployment
+
+1. **Build**: `npx vite build` creates a static bundle in `dist/`
+2. **Toss Console**: Use `npx ait build` to prepare the Toss-compatible bundle
+3. **Review**: Submit via [Toss Developer Console](https://console.tossmini.com)
+4. **CDN Hosting**: Toss CDN hosts the app automatically; no external deployment needed
+
+The app runs on two origins:
+- Production: `https://{appName}.web.tossmini.com`
+- QR test: `https://{appName}.private-web.tossmini.com`
+
+External APIs must allow both origins in CORS headers.
+
+## License
+
+MIT
